@@ -4,11 +4,39 @@ This project contains a production-ready Student Authentication Module built wit
 
 ## Project Structure
 
-- `app/`: Next.js pages, layouts, and API routes.
-- `components/`: Reusable UI components.
-- `lib/`: Utility functions and library configurations (Auth.js, Ant Design).
-- `styles/`: Global styles and Tailwind configuration.
-- `app/api/`: Backend logic implemented as Next.js API Routes.
+```
+├── app/
+│   ├── api/
+│   │   ├── auth/
+│   │   │   └── register/
+│   │   │       └── route.ts          # Registration API endpoint
+│   │   └── profile/
+│   │       └── route.ts              # Profile API endpoint
+│   ├── dashboard/
+│   │   └── profile/
+│   │       └── page.tsx              # Profile dashboard page
+│   ├── forgot-password/
+│   │   └── page.tsx                  # Forgot password page
+│   ├── login/
+│   │   └── page.tsx                  # Login page
+│   ├── register/
+│   │   └── page.tsx                  # Registration page
+│   ├── shared/
+│   │   └── schemas.ts                # Shared Zod validation schemas
+│   ├── layout.tsx                    # Root layout
+│   └── page.tsx                      # Home page
+├── components/
+│   ├── AntdProvider.tsx              # Ant Design theme provider
+│   └── ChangePasswordModal.tsx       # Change password modal component
+├── lib/
+│   └── auth.ts                       # Auth.js configuration
+├── styles/
+│   └── globals.css                   # Global styles
+├── database_schema.sql               # PostgreSQL schema
+├── next.config.mjs
+├── tailwind.config.js
+└── tsconfig.json
+```
 
 ## Tech Stack
 
