@@ -1,4 +1,4 @@
-// File: C:\Users\Administrator\AI-Powered Intelligent Study Assistant System\app\login\page.tsx
+// File: C:\xampp\htdocs\AI-Powered-Intelligent-Study-Assistant-System\app\login\page.tsx
 import * as entry from '../../../../app/login/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

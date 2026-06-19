@@ -1,10 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: [
-    "antd",
-    "@ant-design/icons",
-    "@ant-design/nextjs-registry",
-  ],
+  images: { domains: ["images.unsplash.com", "avatars.githubusercontent.com"] },
 };
 
 export default nextConfig;
