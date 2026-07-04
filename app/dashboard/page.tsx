@@ -45,73 +45,18 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/use-current-user";
-
-// Mock Data
-const weeklyProgress = [
-    { name: "Mon", sessions: 4 },
-    { name: "Tue", sessions: 6 },
-    { name: "Wed", sessions: 3 },
-    { name: "Thu", sessions: 8 },
-    { name: "Fri", sessions: 5 },
-    { name: "Sat", sessions: 9 },
-    { name: "Sun", sessions: 7 },
-];
-
-const quizTrend = [
-    { month: "Jan", score: 65 },
-    { month: "Feb", score: 72 },
-    { month: "Mar", score: 85 },
-    { month: "Apr", score: 82 },
-    { month: "May", score: 90 },
-    { month: "Jun", score: 94 },
-];
-
-const subjectPerformance = [
-    { subject: "Mathematics", A: 120, fullMark: 150 },
-    { subject: "Physics", A: 98, fullMark: 150 },
-    { subject: "Chemistry", A: 86, fullMark: 150 },
-    { subject: "Biology", A: 99, fullMark: 150 },
-    { subject: "Economics", A: 85, fullMark: 150 },
-    { subject: "History", A: 65, fullMark: 150 },
-];
-
-const subjectDistribution = [
-    { name: "Applied Science", value: 400, color: "#4f46e5" },
-    { name: "Mathematics", value: 300, color: "#9333ea" },
-    { name: "Humanities", value: 300, color: "#2563eb" },
-    { name: "Languages", value: 200, color: "#0ea5e9" },
-];
-
-const recentActivities = [
-    { id: 1, type: "quiz", title: "Quantum Physics Advanced Quiz", status: "Completed", score: "92%", time: "2 hours ago" },
-    { id: 2, type: "summary", title: "Organic Chemistry Chapter 4", status: "Generated", time: "5 hours ago" },
-    { id: 3, type: "document", title: "Machine Learning Research Paper", status: "Uploaded", time: "Yesterday" },
-    { id: 4, type: "chat", title: "AI tutor: Thermodynamics", status: "Saved", time: "2 days ago" },
-];
-
-const recommendations = [
-    { id: 1, title: "Review 'Cell Division'", reason: "Weak performance in recent practice", urgency: "High" },
-    { id: 2, title: "Practice Problem Set 4", reason: "Reinforce concepts from today's session", urgency: "Medium" },
-];
-
-const weakTopics = [
-    { name: "Thermodynamics", score: 45, icon: AlertCircle, color: "text-red-500" },
-    { name: "Ancient History", score: 58, icon: AlertCircle, color: "text-amber-500" },
-];
-
-const strongTopics = [
-    { name: "Linear Algebra", score: 95, icon: ThumbsUp, color: "text-emerald-500" },
-    { name: "Molecular Biology", score: 88, icon: ThumbsUp, color: "text-indigo-500" },
-];
-
-const upcomingGoals = [
-    { id: 1, title: "Finish 5 Practice Sets", progress: 60, date: "Due in 2 days" },
-    { id: 2, title: "Review 'Calculus III'", progress: 25, date: "Due in 4 days" },
-    { id: 3, title: "Generate 10 Summaries", progress: 80, date: "Due Tomorrow" },
-];
+import { useDashboardStats } from "@/lib/use-dashboard-stats";
+import { useDashboardOverview } from "@/lib/use-dashboard-overview";
 
 export default function DashboardPage() {
     const { displayName } = useCurrentUser();
+    const { stats, loading } = useDashboardStats();
+    const { overview, loading: overviewLoading } = useDashboardOverview();
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     return (
         <div className="space-y-10 pb-12 animate-fade-in">
@@ -141,14 +86,42 @@ export default function DashboardPage() {
                 </div>
             </section>
 
-            {/* Stats Cards Grid */}
+            {/* Stats Cards Grid - Now using real backend data */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-                <DashboardCard title="Docs Uploaded" value="124" icon={Files} gradient />
-                <DashboardCard title="Summaries" value="48" icon={FileText} />
-                <DashboardCard title="Quizzes" value="32" icon={CheckCircle2} />
-                <DashboardCard title="Avg Score" value="88%" icon={Trophy} trend={{ value: "4%", isUp: true }} />
-                <DashboardCard title="Study Hours" value="42.5h" icon={Clock} trend={{ value: "12%", isUp: true }} />
-                <DashboardCard title="Streak" value="14 Days" icon={Zap} gradient />
+                <DashboardCard 
+                    title="Docs Uploaded" 
+                    value={loading ? "..." : stats.documents_uploaded.toString()} 
+                    icon={Files} 
+                    gradient 
+                />
+                <DashboardCard 
+                    title="Summaries" 
+                    value={loading ? "..." : stats.summaries_generated.toString()} 
+                    icon={FileText} 
+                />
+                <DashboardCard 
+                    title="Quizzes" 
+                    value={loading ? "..." : stats.quizzes_completed.toString()} 
+                    icon={CheckCircle2} 
+                />
+                <DashboardCard 
+                    title="Avg Score" 
+                    value={loading ? "..." : `${stats.avg_quiz_score}%`} 
+                    icon={Trophy} 
+                    trend={{ value: "4%", isUp: true }} 
+                />
+                <DashboardCard 
+                    title="Study Hours" 
+                    value={loading ? "..." : `${stats.study_time_hours}h`} 
+                    icon={Clock} 
+                    trend={{ value: "12%", isUp: true }} 
+                />
+                <DashboardCard 
+                    title="Streak" 
+                    value={loading ? "..." : `${stats.learning_streak} Days`} 
+                    icon={Zap} 
+                    gradient 
+                />
             </section>
 
             {/* Charts Section */}
@@ -165,24 +138,28 @@ export default function DashboardPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="h-[350px] mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={weeklyProgress}>
-                                <defs>
-                                    <linearGradient id="colorStudy" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
-                                    cursor={{ stroke: '#6366f1', strokeWidth: 2 }}
-                                />
-                                <Area type="monotone" dataKey="sessions" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorStudy)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={overview.weekly_progress}>
+                                    <defs>
+                                        <linearGradient id="colorStudy" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
+                                        cursor={{ stroke: '#6366f1', strokeWidth: 2 }}
+                                    />
+                                    <Area type="monotone" dataKey="sessions" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorStudy)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full" />
+                        )}
                     </CardContent>
                 </Card>
 
@@ -193,21 +170,25 @@ export default function DashboardPage() {
                         <CardDescription>Score improvement monthly</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[350px] mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={quizTrend}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
-                                />
-                                <Bar dataKey="score" radius={[6, 6, 0, 0]}>
-                                    {quizTrend.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={index === quizTrend.length - 1 ? "#4f46e5" : "#4f46e540"} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={overview.quiz_trend}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
+                                    />
+                                    <Bar dataKey="score" radius={[6, 6, 0, 0]}>
+                                        {overview.quiz_trend.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={index === overview.quiz_trend.length - 1 ? "#4f46e5" : "#4f46e540"} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full" />
+                        )}
                     </CardContent>
                 </Card>
             </section>
@@ -221,15 +202,19 @@ export default function DashboardPage() {
                         <CardDescription>Academic balance overview</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px] flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={subjectPerformance}>
-                                <PolarGrid stroke="#88888820" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#888888' }} />
-                                <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
-                                <Radar name="Student" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
-                                <Tooltip />
-                            </RadarChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={overview.subject_performance}>
+                                    <PolarGrid stroke="#88888820" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#888888' }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
+                                    <Radar name="Student" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
+                                    <Tooltip />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full" />
+                        )}
                     </CardContent>
                 </Card>
 
@@ -244,7 +229,7 @@ export default function DashboardPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {weakTopics.map((topic) => (
+                            {overview.weak_topics.map((topic) => (
                                 <div key={topic.name} className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50">
                                     <span className="text-sm font-medium">{topic.name}</span>
                                     <span className="text-xs font-bold text-red-500">{topic.score}%</span>
@@ -262,7 +247,7 @@ export default function DashboardPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {strongTopics.map((topic) => (
+                            {overview.strong_topics.map((topic) => (
                                 <div key={topic.name} className="flex items-center justify-between p-3 rounded-2xl bg-background/50 border border-border/50">
                                     <span className="text-sm font-medium">{topic.name}</span>
                                     <span className="text-xs font-bold text-emerald-500">{topic.score}%</span>
@@ -279,7 +264,7 @@ export default function DashboardPage() {
                         <Target className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent className="space-y-6 pt-2">
-                        {upcomingGoals.map((goal) => (
+                        {overview.study_goals.map((goal) => (
                             <div key={goal.id} className="space-y-2">
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="font-semibold">{goal.title}</span>
@@ -317,7 +302,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="pt-2">
                         <div className="space-y-1">
-                            {recentActivities.map((activity) => (
+                            {overview.recent_activities.map((activity) => (
                                 <div key={activity.id} className="group flex items-center justify-between p-4 rounded-2xl hover:bg-muted/30 transition-all">
                                     <div className="flex items-center gap-4">
                                         <div className={cn(
@@ -359,7 +344,7 @@ export default function DashboardPage() {
                         <CardDescription>Personalized optimization</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 pt-2">
-                        {recommendations.map((rec) => (
+                        {overview.recommendations.map((rec) => (
                             <div key={rec.id} className="relative p-5 rounded-2xl bg-background/40 border border-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer group">
                                 <div className={cn(
                                     "absolute top-4 right-4 h-2 w-2 rounded-full",

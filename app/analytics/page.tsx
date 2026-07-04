@@ -79,6 +79,12 @@ const focusAreas = [
 ];
 
 export default function AnalyticsPage() {
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     return (
         <div className="space-y-10 pb-12 animate-fade-in">
             {/* Header */}
@@ -150,28 +156,32 @@ export default function AnalyticsPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="h-[400px] mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={monthlyTrend}>
-                                <defs>
-                                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorQuizzes" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
-                                />
-                                <Area type="monotone" dataKey="avgScore" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
-                                <Area type="monotone" dataKey="quizzes" stroke="#a855f7" strokeWidth={4} fillOpacity={1} fill="url(#colorQuizzes)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height={320}>
+                                <AreaChart data={monthlyTrend}>
+                                    <defs>
+                                        <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorQuizzes" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
+                                    />
+                                    <Area type="monotone" dataKey="avgScore" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
+                                    <Area type="monotone" dataKey="quizzes" stroke="#a855f7" strokeWidth={4} fillOpacity={1} fill="url(#colorQuizzes)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full" />
+                        )}
                     </CardContent>
                 </Card>
 
@@ -182,15 +192,19 @@ export default function AnalyticsPage() {
                         <CardDescription>Performance across main domains</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={subjectDistribution}>
-                                <PolarGrid stroke="#88888820" />
-                                <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: '#888888' }} />
-                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                <Radar name="Performance" dataKey="score" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
-                                <Tooltip />
-                            </RadarChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height={320}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={subjectDistribution}>
+                                    <PolarGrid stroke="#88888820" />
+                                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: '#888888' }} />
+                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                    <Radar name="Performance" dataKey="score" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
+                                    <Tooltip />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full" />
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -204,18 +218,22 @@ export default function AnalyticsPage() {
                         <TrendingUp className="h-5 w-5 text-emerald-500" />
                     </CardHeader>
                     <CardContent className="h-[300px] mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={weeklyActivity}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
-                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
-                                    cursor={{ fill: '#88888810' }}
-                                />
-                                <Bar dataKey="hours" radius={[6, 6, 0, 0]} fill="#6366f1" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {isMounted ? (
+                            <ResponsiveContainer width="100%" height={260}>
+                                <BarChart data={weeklyActivity}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
+                                        cursor={{ fill: '#88888810' }}
+                                    />
+                                    <Bar dataKey="hours" radius={[6, 6, 0, 0]} fill="#6366f1" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full" />
+                        )}
                     </CardContent>
                 </Card>
 
