@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { LoginSchema } from "@/app/shared/schemas";
+import { api } from "@/lib/api";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
@@ -16,14 +17,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                const parsedCredentials = LoginSchema.safeParse(credentials);
+                const parsed = LoginSchema.safeParse(credentials);
+                if (!parsed.success) return null;
 
-                if (parsedCredentials.success) {
-                    // Logic to call Backend API for validation
-                    // return user object if successful
-                    return { id: "1", name: "Student", email: credentials.email as string };
+                try {
+                    const { user, token } = await api.auth.login({
+                        email: parsed.data.email,
+                        password: parsed.data.password,
+                    });
+                    return {
+                        id: user.id,
+                        name: user.full_name,
+                        email: user.email,
+                        image: user.profile_picture ?? undefined,
+                        accessToken: token,
+                    };
+                } catch {
+                    return null;
                 }
-                return null;
             },
         }),
     ],
@@ -31,13 +42,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
+                token.accessToken = (user as any).accessToken;
             }
             return token;
         },
         async session({ session, token }) {
-            if (token.id) {
-                session.user.id = token.id as string;
-            }
+            if (token.id) session.user.id = token.id as string;
+            if (token.accessToken) (session as any).accessToken = token.accessToken;
             return session;
         },
     },
