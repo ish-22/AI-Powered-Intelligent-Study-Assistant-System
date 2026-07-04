@@ -8,7 +8,16 @@ export async function POST(req: Request) {
         const result = RegisterSchema.safeParse(body);
 
         if (!result.success) {
-            return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+            const flattened = result.error.flatten();
+
+            return NextResponse.json(
+                {
+                    message: "Validation failed",
+                    errors: flattened.fieldErrors,
+                    formErrors: flattened.formErrors,
+                },
+                { status: 400 }
+            );
         }
 
         const { fullName, email, password, confirmPassword } = result.data;
