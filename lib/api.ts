@@ -19,9 +19,10 @@ async function request<T>(
     const data = await res.json();
 
     if (!res.ok) {
+        const errors = (data?.errors ?? {}) as Record<string, string[]>;
         const message =
             data?.message ||
-            Object.values(data?.errors ?? {})?.[0]?.[0] ||
+            Object.values(errors)[0]?.[0] ||
             'Request failed';
         throw new Error(message as string);
     }

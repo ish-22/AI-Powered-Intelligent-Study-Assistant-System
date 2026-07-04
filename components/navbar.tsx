@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Search, Bell, Settings, LogOut, User, Sparkles } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { MobileNav } from "./mobile-nav";
@@ -15,47 +15,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useSession, signOut } from "next-auth/react";
-import { api, type AuthUser } from "@/lib/api";
+import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export function Navbar() {
     const pathname = usePathname();
-    const { data: session } = useSession();
-    const [profile, setProfile] = useState<AuthUser | null>(null);
-
-    useEffect(() => {
-        const token = session?.accessToken;
-
-        if (!token) {
-            setProfile(null);
-            return;
-        }
-
-        let active = true;
-
-        api.auth.me(token)
-            .then(({ user }) => {
-                if (active) setProfile(user);
-            })
-            .catch(() => {
-                if (active) setProfile(null);
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [session?.accessToken]);
-
-    const displayName = profile?.full_name || session?.user?.name || "Study user";
-    const displayEmail = profile?.email || session?.user?.email || "Connected account";
-    const initials = displayName
-        .split(" ")
-        .filter(Boolean)
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
+    const { displayName, displayEmail, avatarUrl, initials } = useCurrentUser();
 
     return (
         <header className="sticky top-0 z-30 flex h-16 w-full items-center border-b bg-background/60 backdrop-blur-xl px-4 md:px-8">
@@ -92,7 +58,7 @@ export function Navbar() {
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 border border-border/50">
                                 <Avatar className="h-9 w-9">
-                                    <AvatarImage src={profile?.profile_picture || session?.user?.image || ""} alt={displayName} />
+                                    <AvatarImage src={avatarUrl} alt={displayName} />
                                     <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white">
                                         {initials || "SU"}
                                     </AvatarFallback>

@@ -10,43 +10,17 @@ import {
     CalendarOutlined,
     ClockCircleOutlined
 } from '@ant-design/icons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
-import { useSession } from 'next-auth/react';
-import { api, type AuthUser } from '@/lib/api';
+import { useCurrentUser } from '@/lib/use-current-user';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
 export default function ProfileDashboard() {
-    const { data: session } = useSession();
     const [collapsed, setCollapsed] = useState(false);
     const [isPassModalOpen, setIsPassModalOpen] = useState(false);
-    const [profile, setProfile] = useState<AuthUser | null>(null);
-
-    useEffect(() => {
-        const token = session?.accessToken;
-        if (!token) {
-            setProfile(null);
-            return;
-        }
-
-        let active = true;
-        api.auth.me(token)
-            .then(({ user }) => {
-                if (active) setProfile(user);
-            })
-            .catch(() => {
-                if (active) setProfile(null);
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [session?.accessToken]);
-
-    const displayName = profile?.full_name || session?.user?.name || "Study user";
-    const displayEmail = profile?.email || session?.user?.email || "account connected";
+    const { displayName, displayEmail, profile } = useCurrentUser();
 
     return (
         <Layout style={{ minHeight: '100vh' }}>

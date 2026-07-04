@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
     User,
     Mail,
@@ -23,36 +23,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
-import { api, type AuthUser } from "@/lib/api";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export default function ProfilePage() {
-    const { data: session } = useSession();
-    const [profile, setProfile] = useState<AuthUser | null>(null);
-
-    useEffect(() => {
-        const token = session?.accessToken;
-        if (!token) {
-            setProfile(null);
-            return;
-        }
-
-        let active = true;
-        api.auth.me(token)
-            .then(({ user }) => {
-                if (active) setProfile(user);
-            })
-            .catch(() => {
-                if (active) setProfile(null);
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [session?.accessToken]);
-
-    const displayName = profile?.full_name || session?.user?.name || "Student account";
-    const displayEmail = profile?.email || session?.user?.email || "No email connected";
+    const { profile, displayName, displayEmail, avatarUrl, initials } = useCurrentUser();
     const avatarInitials = displayName
         .split(" ")
         .filter(Boolean)
@@ -71,9 +45,9 @@ export default function ProfilePage() {
                 <div className="px-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end gap-6">
                     <div className="relative group">
                         <Avatar className="h-32 w-32 border-8 border-background shadow-2xl rounded-3xl">
-                            <AvatarImage src={profile?.profile_picture || session?.user?.image || ""} alt={displayName} />
+                            <AvatarImage src={avatarUrl} alt={displayName} />
                             <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-4xl font-black">
-                                {avatarInitials || "SU"}
+                                {initials || avatarInitials || "SU"}
                             </AvatarFallback>
                         </Avatar>
                         <button className="absolute bottom-2 right-2 p-2 bg-white dark:bg-zinc-800 text-indigo-600 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity border border-indigo-500/10">

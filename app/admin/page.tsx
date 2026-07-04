@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
     Users,
     Files,
@@ -34,8 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
-import { api, type AuthUser } from "@/lib/api";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 const tabs = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -62,31 +61,7 @@ const mockLogs = [
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState("overview");
-    const { data: session } = useSession();
-    const [profile, setProfile] = useState<AuthUser | null>(null);
-
-    useEffect(() => {
-        const token = session?.accessToken;
-        if (!token) {
-            setProfile(null);
-            return;
-        }
-
-        let active = true;
-        api.auth.me(token)
-            .then(({ user }) => {
-                if (active) setProfile(user);
-            })
-            .catch(() => {
-                if (active) setProfile(null);
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [session?.accessToken]);
-
-    const displayName = profile?.full_name || session?.user?.name || "Admin";
+    const { displayName } = useCurrentUser();
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in max-w-[1600px] mx-auto">

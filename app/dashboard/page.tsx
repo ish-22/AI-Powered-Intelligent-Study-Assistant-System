@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
     FileText,
     Files,
@@ -44,8 +44,7 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
-import { api, type AuthUser } from "@/lib/api";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 // Mock Data
 const weeklyProgress = [
@@ -112,31 +111,7 @@ const upcomingGoals = [
 ];
 
 export default function DashboardPage() {
-    const { data: session } = useSession();
-    const [profile, setProfile] = useState<AuthUser | null>(null);
-
-    useEffect(() => {
-        const token = session?.accessToken;
-        if (!token) {
-            setProfile(null);
-            return;
-        }
-
-        let active = true;
-        api.auth.me(token)
-            .then(({ user }) => {
-                if (active) setProfile(user);
-            })
-            .catch(() => {
-                if (active) setProfile(null);
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [session?.accessToken]);
-
-    const displayName = profile?.full_name || session?.user?.name || "Student";
+    const { displayName } = useCurrentUser();
 
     return (
         <div className="space-y-10 pb-12 animate-fade-in">
