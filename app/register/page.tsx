@@ -95,7 +95,7 @@ export default function RegisterPage() {
                                 <input
                                     {...register("fullName")}
                                     type="text"
-                                    placeholder="John Doe"
+                                    placeholder="Your full name"
                                     className={cn(
                                         "w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border text-white placeholder:text-zinc-600 text-sm outline-none transition-all",
                                         "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20",

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     User,
     Mail,
@@ -23,8 +23,44 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
+import { api, type AuthUser } from "@/lib/api";
 
 export default function ProfilePage() {
+    const { data: session } = useSession();
+    const [profile, setProfile] = useState<AuthUser | null>(null);
+
+    useEffect(() => {
+        const token = session?.accessToken;
+        if (!token) {
+            setProfile(null);
+            return;
+        }
+
+        let active = true;
+        api.auth.me(token)
+            .then(({ user }) => {
+                if (active) setProfile(user);
+            })
+            .catch(() => {
+                if (active) setProfile(null);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [session?.accessToken]);
+
+    const displayName = profile?.full_name || session?.user?.name || "Student account";
+    const displayEmail = profile?.email || session?.user?.email || "No email connected";
+    const avatarInitials = displayName
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
     return (
         <div className="space-y-10 pb-12 animate-fade-in max-w-5xl mx-auto">
             {/* Profile Header */}
@@ -35,8 +71,10 @@ export default function ProfilePage() {
                 <div className="px-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end gap-6">
                     <div className="relative group">
                         <Avatar className="h-32 w-32 border-8 border-background shadow-2xl rounded-3xl">
-                            <AvatarImage src="/avatar-placeholder.png" alt="User" />
-                            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-4xl font-black">JD</AvatarFallback>
+                            <AvatarImage src={profile?.profile_picture || session?.user?.image || ""} alt={displayName} />
+                            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-4xl font-black">
+                                {avatarInitials || "SU"}
+                            </AvatarFallback>
                         </Avatar>
                         <button className="absolute bottom-2 right-2 p-2 bg-white dark:bg-zinc-800 text-indigo-600 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity border border-indigo-500/10">
                             <Camera className="h-4 w-4" />
@@ -44,13 +82,13 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex-1 pb-2">
                         <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-black tracking-tight">John Doe</h1>
-                            <Badge className="bg-indigo-500 text-white border-none rounded-lg font-bold">PRO</Badge>
+                            <h1 className="text-3xl font-black tracking-tight">{displayName}</h1>
+                            <Badge className="bg-indigo-500 text-white border-none rounded-lg font-bold">Connected</Badge>
                         </div>
                         <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground font-medium">
-                            <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> john.doe@university.edu</div>
-                            <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Cambridge, UK</div>
-                            <div className="flex items-center gap-1.5 font-bold text-indigo-500"><GraduationCap className="h-3.5 w-3.5" /> MIT Academy</div>
+                            <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> {displayEmail}</div>
+                            <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Joined {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "recently"}</div>
+                            <div className="flex items-center gap-1.5 font-bold text-indigo-500"><CheckCircle2 className="h-3.5 w-3.5" /> Last login {profile?.last_login_date ? new Date(profile.last_login_date).toLocaleString() : "not available"}</div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3 pb-2">
@@ -68,9 +106,9 @@ export default function ProfilePage() {
                     {/* Stats Bar */}
                     <section className="grid grid-cols-3 gap-4">
                         {[
-                            { label: "Documents", val: "124", icon: BookOpen, color: "bg-blue-500/10 text-blue-500" },
-                            { label: "Summaries", val: "48", icon: FileText, color: "bg-purple-500/10 text-purple-500" },
-                            { label: "Avg Score", val: "88%", icon: Trophy, color: "bg-amber-500/10 text-amber-500" },
+                            { label: "Account", val: "Live", icon: BookOpen, color: "bg-blue-500/10 text-blue-500" },
+                            { label: "Backend", val: "Connected", icon: FileText, color: "bg-purple-500/10 text-purple-500" },
+                            { label: "Status", val: "Active", icon: Trophy, color: "bg-amber-500/10 text-amber-500" },
                         ].map((stat) => (
                             <Card key={stat.label} className="border-none bg-card/40 backdrop-blur-xl shadow-sm rounded-3xl overflow-hidden p-6 text-center">
                                 <div className={cn("mx-auto h-10 w-10 rounded-xl flex items-center justify-center mb-4 shadow-sm", stat.color)}>

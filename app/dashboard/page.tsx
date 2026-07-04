@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     FileText,
     Files,
@@ -44,6 +44,8 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
+import { api, type AuthUser } from "@/lib/api";
 
 // Mock Data
 const weeklyProgress = [
@@ -110,6 +112,32 @@ const upcomingGoals = [
 ];
 
 export default function DashboardPage() {
+    const { data: session } = useSession();
+    const [profile, setProfile] = useState<AuthUser | null>(null);
+
+    useEffect(() => {
+        const token = session?.accessToken;
+        if (!token) {
+            setProfile(null);
+            return;
+        }
+
+        let active = true;
+        api.auth.me(token)
+            .then(({ user }) => {
+                if (active) setProfile(user);
+            })
+            .catch(() => {
+                if (active) setProfile(null);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [session?.accessToken]);
+
+    const displayName = profile?.full_name || session?.user?.name || "Student";
+
     return (
         <div className="space-y-10 pb-12 animate-fade-in">
             {/* Header Section */}
@@ -120,10 +148,10 @@ export default function DashboardPage() {
                         animate={{ opacity: 1, x: 0 }}
                         className="text-4xl font-extrabold tracking-tight"
                     >
-                        Student <span className="gradient-text">Dashboard</span>
+                        {displayName.split(" ")[0]}'s <span className="gradient-text">Dashboard</span>
                     </motion.h1>
                     <p className="text-muted-foreground mt-2 max-w-md">
-                        Welcome back, your AI assistant has analyzed your progress. Here's your personalized overview.
+                        Welcome back, {displayName}. Your AI assistant is ready with study tools, recommendations, and account insights.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
