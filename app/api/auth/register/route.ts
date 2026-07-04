@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { RegisterSchema } from '@/app/shared/schemas';
+import { api } from '@/lib/api';
 
 export async function POST(req: Request) {
     try {
@@ -8,17 +8,30 @@ export async function POST(req: Request) {
         const result = RegisterSchema.safeParse(body);
 
         if (!result.success) {
-            return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
+            const flattened = result.error.flatten();
+
+            return NextResponse.json(
+                {
+                    message: "Validation failed",
+                    errors: flattened.fieldErrors,
+                    formErrors: flattened.formErrors,
+                },
+                { status: 400 }
+            );
         }
 
-        const { fullName, email, password } = result.data;
-        const passwordHash = await bcrypt.hash(password, 10);
+        const { fullName, email, password, confirmPassword } = result.data;
 
-        // TODO: DB insertion logic here using 'postgres' or Supabase client
-        console.log('Registering user:', { fullName, email, passwordHash });
+        const response = await api.auth.register({
+            full_name: fullName,
+            email,
+            password,
+            password_confirmation: confirmPassword,
+        });
 
-        return NextResponse.json({ message: 'User registered successfully' }, { status: 201 });
+        return NextResponse.json(response, { status: 201 });
     } catch (error) {
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Internal Server Error';
+        return NextResponse.json({ message }, { status: 500 });
     }
 }

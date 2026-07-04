@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useState } from 'react';
 import ChangePasswordModal from '@/components/ChangePasswordModal';
+import { useCurrentUser } from '@/lib/use-current-user';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -19,6 +20,7 @@ const { Title, Text, Paragraph } = Typography;
 export default function ProfileDashboard() {
     const [collapsed, setCollapsed] = useState(false);
     const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+    const { displayName, displayEmail, profile } = useCurrentUser();
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
@@ -39,7 +41,7 @@ export default function ProfileDashboard() {
                     <Title level={4} style={{ margin: 0 }}>Student Profile</Title>
                     <Space>
                         <Avatar icon={<UserOutlined />} />
-                        <Text strong>John Doe</Text>
+                        <Text strong>{displayName}</Text>
                     </Space>
                 </Header>
                 <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', borderRadius: 8 }}>
@@ -47,20 +49,32 @@ export default function ProfileDashboard() {
                         <Col xs={24} md={8}>
                             <Card style={{ textAlign: 'center' }}>
                                 <Avatar size={100} icon={<UserOutlined />} style={{ marginBottom: 16 }} />
-                                <Title level={3}>John Doe</Title>
+                                <Title level={3}>{displayName}</Title>
                                 <Tag color="blue">Student</Tag>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>Joined: Jan 2024</Text>
+                                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                                    Joined: {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Recently'}
+                                </Text>
                                 <Button type="primary" icon={<EditOutlined />} block>Edit Profile</Button>
                             </Card>
                         </Col>
                         <Col xs={24} md={16}>
                             <Card title="Account Information">
                                 <Descriptions bordered column={1}>
-                                    <Descriptions.Item label="Full Name">John Doe</Descriptions.Item>
-                                    <Descriptions.Item label="Email">john.doe@example.com</Descriptions.Item>
+                                    <Descriptions.Item label="Full Name">{displayName}</Descriptions.Item>
+                                    <Descriptions.Item label="Email">{displayEmail}</Descriptions.Item>
                                     <Descriptions.Item label="Account Status"><Tag color="green">Active</Tag></Descriptions.Item>
-                                    <Descriptions.Item label="Last Login"><Space><ClockCircleOutlined /> 2 hours ago</Space></Descriptions.Item>
-                                    <Descriptions.Item label="Member Since"><Space><CalendarOutlined /> June 1, 2024</Space></Descriptions.Item>
+                                    <Descriptions.Item label="Last Login">
+                                        <Space>
+                                            <ClockCircleOutlined />
+                                            {profile?.last_login_date ? new Date(profile.last_login_date).toLocaleString() : 'Not available'}
+                                        </Space>
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Member Since">
+                                        <Space>
+                                            <CalendarOutlined />
+                                            {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Not available'}
+                                        </Space>
+                                    </Descriptions.Item>
                                 </Descriptions>
 
                                 <Divider />

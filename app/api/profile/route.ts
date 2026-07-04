@@ -1,28 +1,25 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { UpdateProfileSchema } from '@/app/shared/schemas';
+import { api } from '@/lib/api';
 
 export async function GET() {
     const session = await auth();
-    if (!session) {
+    const token = session?.accessToken;
+
+    if (!token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // TODO: Fetch profile from DB
-    return NextResponse.json({
-        user: {
-            fullName: session.user?.name || 'Student Name',
-            email: session.user?.email || 'student@example.com',
-            avatar: session.user?.image || null,
-            joinedAt: '2024-01-01',
-            lastLogin: new Date().toISOString()
-        }
-    });
+    const response = await api.profile.get(token);
+    return NextResponse.json(response);
 }
 
 export async function PATCH(req: Request) {
     const session = await auth();
-    if (!session) {
+    const token = session?.accessToken;
+
+    if (!token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -34,9 +31,15 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ error: result.error.flatten() }, { status: 400 });
         }
 
-        // TODO: Update profile in DB
-        return NextResponse.json({ message: 'Profile updated successfully' });
+        const response = await api.profile.update(token, {
+            full_name: result.data.fullName,
+            email: result.data.email,
+            profile_picture: result.data.profilePicture || undefined,
+        });
+
+        return NextResponse.json(response);
     } catch (error) {
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Internal Server Error';
+        return NextResponse.json({ message }, { status: 500 });
     }
 }

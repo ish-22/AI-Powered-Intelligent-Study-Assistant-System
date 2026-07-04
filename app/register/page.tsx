@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, User, BrainCircuit, Loader2, CheckCircle2 } from "lucide-react";
 import { RegisterSchema, RegisterInput } from "@/app/shared/schemas";
-import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { signIn } from "next-auth/react";
 
@@ -36,12 +35,40 @@ export default function RegisterPage() {
         setLoading(true);
         setError("");
         try {
-            await api.auth.register({
-                full_name: data.fullName,
-                email: data.email,
-                password: data.password,
-                password_confirmation: data.confirmPassword,
+            const response = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    fullName: data.fullName,
+                    email: data.email,
+                    password: data.password,
+                    confirmPassword: data.confirmPassword,
+                    terms: data.terms,
+                }),
             });
+
+            const payload = await response.json();
+
+            if (!response.ok) {
+                const firstError =
+                    payload?.errors &&
+                    typeof payload.errors === "object" &&
+                    !Array.isArray(payload.errors)
+                        ? Object.values(payload.errors as Record<string, string[] | undefined>)
+                            .flat()
+                            .find(Boolean)
+                        : undefined;
+
+                throw new Error(
+                    payload?.message ||
+                        firstError ||
+                        "Registration failed. Please try again."
+                );
+            }
+
             setSuccess(true);
             setTimeout(() => router.push("/login"), 2000);
         } catch (err: any) {
@@ -95,7 +122,7 @@ export default function RegisterPage() {
                                 <input
                                     {...register("fullName")}
                                     type="text"
-                                    placeholder="John Doe"
+                                    placeholder="Your full name"
                                     className={cn(
                                         "w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border text-white placeholder:text-zinc-600 text-sm outline-none transition-all",
                                         "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20",

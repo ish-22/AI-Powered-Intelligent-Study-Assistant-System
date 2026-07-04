@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 const tabs = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -44,22 +45,23 @@ const tabs = [
 ];
 
 const mockUsers = [
-    { id: 1, name: "Alice Johnson", email: "alice@example.com", status: "Active", plan: "Pro", joined: "2 mins ago" },
-    { id: 2, name: "Bob Smith", email: "bob@example.com", status: "Inactive", plan: "Free", joined: "1 hour ago" },
-    { id: 3, name: "Charlie Brown", email: "charlie@example.com", status: "Active", plan: "Pro", joined: "3 hours ago" },
-    { id: 4, name: "Diana Prince", email: "diana@amazon.com", status: "Pending", plan: "Enterprise", joined: "Yesterday" },
-    { id: 5, name: "Edward Norton", email: "ed@fight.club", status: "Active", plan: "Pro", joined: "2 days ago" },
+    { id: 1, name: "Student 01", email: "student01@demo.edu", status: "Active", plan: "Pro", joined: "2 mins ago" },
+    { id: 2, name: "Student 02", email: "student02@demo.edu", status: "Inactive", plan: "Free", joined: "1 hour ago" },
+    { id: 3, name: "Student 03", email: "student03@demo.edu", status: "Active", plan: "Pro", joined: "3 hours ago" },
+    { id: 4, name: "Student 04", email: "student04@demo.edu", status: "Pending", plan: "Enterprise", joined: "Yesterday" },
+    { id: 5, name: "Student 05", email: "student05@demo.edu", status: "Active", plan: "Pro", joined: "2 days ago" },
 ];
 
 const mockLogs = [
-    { id: 1, event: "New User Registered", user: "John Doe", time: "10:45 AM", severity: "info" },
+    { id: 1, event: "New User Registered", user: "Demo Student", time: "10:45 AM", severity: "info" },
     { id: 2, event: "Quiz Generation Failed", user: "System", time: "10:30 AM", severity: "warning" },
-    { id: 3, event: "Large Document Uploaded", user: "Alice J.", time: "09:12 AM", severity: "success" },
-    { id: 4, event: "Subscription Upgraded", user: "Bob S.", time: "Yesterday", severity: "success" },
+    { id: 3, event: "Large Document Uploaded", user: "Demo Student", time: "09:12 AM", severity: "success" },
+    { id: 4, event: "Subscription Upgraded", user: "Demo Student", time: "Yesterday", severity: "success" },
 ];
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState("overview");
+    const { displayName } = useCurrentUser();
 
     return (
         <div className="space-y-8 pb-12 animate-fade-in max-w-[1600px] mx-auto">
@@ -70,8 +72,8 @@ export default function AdminDashboard() {
                         <Lock className="h-6 w-6" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight">Admin <span className="text-muted-foreground font-normal">Console</span></h1>
-                        <p className="text-sm text-muted-foreground mt-1 font-medium italic">Welcome back, Super Admin</p>
+                        <h1 className="text-3xl font-black tracking-tight">Admin <span className="text-muted-foreground font-normal">Control Center</span></h1>
+                        <p className="text-sm text-muted-foreground mt-1 font-medium italic">Welcome back, {displayName}. Manage users, content, analytics, and system settings from here.</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
