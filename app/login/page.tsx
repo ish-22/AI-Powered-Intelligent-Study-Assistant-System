@@ -37,9 +37,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] relative overflow-hidden">
-            <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="min-h-screen flex items-center justify-center bg-[#090914] relative overflow-hidden">
+            <div className="absolute top-[-10%] left-[-5%] w-[520px] h-[520px] bg-indigo-600/20 rounded-full blur-[130px] pointer-events-none" />
+            <div className="absolute bottom-[-10%] right-[-5%] w-[520px] h-[520px] bg-purple-600/20 rounded-full blur-[130px] pointer-events-none" />
 
             <div className="relative z-10 w-full max-w-md px-4">
                 <div className="flex flex-col items-center mb-8">
@@ -50,7 +50,7 @@ export default function LoginPage() {
                     <p className="text-sm text-zinc-400 mt-1">Sign in to your Study.AI account</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl">
+                <div className="bg-white/15 border border-white/20 backdrop-blur-3xl rounded-[2rem] p-8 shadow-[0_48px_140px_-60px_rgba(15,23,42,0.65)]">
                     {error && (
                         <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                             {error}
@@ -109,7 +109,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-600 to-purple-700 text-white font-semibold text-sm transition-all shadow-2xl shadow-indigo-700/30 hover:shadow-indigo-600/40 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                             {loading ? "Signing in..." : "Sign In"}
