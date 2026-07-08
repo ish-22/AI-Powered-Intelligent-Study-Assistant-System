@@ -34,7 +34,10 @@ export default function AdminAnalyticsPage() {
 
     useEffect(() => {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-        fetch(`${API_URL}/admin/stats`)
+        const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+        fetch(`${API_URL}/admin/stats`, {
+            headers: token ? { Authorization: `Bearer ${token}`, Accept: "application/json" } : {},
+        })
             .then((r) => r.json())
             .then((d) => setData(d.stats ?? null))
             .catch(() => setData({

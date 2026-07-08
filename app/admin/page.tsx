@@ -43,7 +43,10 @@ export default function AdminDashboardPage() {
 
     useEffect(() => {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-        fetch(`${API_URL}/admin/stats`)
+        const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+        fetch(`${API_URL}/admin/stats`, {
+            headers: token ? { Authorization: `Bearer ${token}`, Accept: "application/json" } : {},
+        })
             .then((r) => r.json())
             .then((d) => setStats(d.stats ?? null))
             .catch(() => setStats({ total_users: 5, total_documents: 82, total_summaries: 61, total_quizzes: 157, avg_score: 82, total_study_hours: 156 }))
