@@ -47,7 +47,10 @@ export default function AdminDocumentsPage() {
 
     useEffect(() => {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-        fetch(`${API_URL}/admin/documents`)
+        const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+        fetch(`${API_URL}/admin/documents`, {
+            headers: token ? { Authorization: `Bearer ${token}`, Accept: "application/json" } : {},
+        })
             .then((r) => r.json())
             .then((d) => setUsers(d.users?.length ? d.users : FALLBACK))
             .catch(() => setUsers(FALLBACK))

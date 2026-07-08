@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Lock, User, Eye, EyeOff, ShieldCheck, ArrowLeft } from "lucide-react";
 
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "admin123";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -15,29 +14,44 @@ export default function AdminLoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError("");
         setLoading(true);
-        setTimeout(() => {
-            if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-                localStorage.setItem("adminAuth", "true");
-                router.replace("/admin");
-            } else {
-                setError("Invalid username or password.");
+
+        try {
+            const res = await fetch(`${API}/admin/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                const msg = data?.errors?.username?.[0] || data?.message || "Invalid credentials.";
+                setError(msg);
+                return;
             }
+
+            // Store token and user info
+            localStorage.setItem("adminAuth", "true");
+            localStorage.setItem("adminToken", data.token);
+            localStorage.setItem("adminUser", JSON.stringify(data.user));
+            router.replace("/admin");
+        } catch {
+            setError("Cannot connect to server. Make sure the API is running.");
+        } finally {
             setLoading(false);
-        }, 600);
+        }
     }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#090914] relative overflow-hidden px-4">
-            {/* Background glows */}
             <div className="absolute top-[-10%] left-[-5%] w-[520px] h-[520px] bg-indigo-600/20 rounded-full blur-[130px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-5%] w-[520px] h-[520px] bg-purple-600/20 rounded-full blur-[130px] pointer-events-none" />
 
             <div className="relative z-10 w-full max-w-sm">
-                {/* Back link */}
                 <button
                     type="button"
                     onClick={() => router.push("/login")}
@@ -46,7 +60,6 @@ export default function AdminLoginPage() {
                     <ArrowLeft size={13} /> Back to Student Login
                 </button>
 
-                {/* Logo */}
                 <div className="flex flex-col items-center mb-8">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 mb-4">
                         <GraduationCap size={28} className="text-white" />
@@ -55,7 +68,6 @@ export default function AdminLoginPage() {
                     <p className="text-sm text-zinc-400 mt-1">Admin Control Panel</p>
                 </div>
 
-                {/* Card */}
                 <div className="bg-white/[0.06] border border-white/10 backdrop-blur-3xl rounded-[2rem] p-8 shadow-[0_48px_140px_-60px_rgba(15,23,42,0.65)]">
                     <div className="flex items-center gap-2 mb-6">
                         <ShieldCheck size={17} className="text-indigo-400" />
@@ -70,7 +82,7 @@ export default function AdminLoginPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Username</label>
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Username or Email</label>
                             <div className="relative">
                                 <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                                 <input
