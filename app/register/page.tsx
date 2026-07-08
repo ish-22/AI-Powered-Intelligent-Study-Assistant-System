@@ -70,7 +70,7 @@ export default function RegisterPage() {
             }
 
             setSuccess(true);
-            setTimeout(() => router.push("/login"), 2000);
+            setTimeout(() => router.push(`/verify-email?email=${encodeURIComponent(data.email)}`), 2000);
         } catch (err: any) {
             setError(err.message || "Registration failed. Please try again.");
         } finally {

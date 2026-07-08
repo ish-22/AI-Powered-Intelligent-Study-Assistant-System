@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
     LayoutDashboard,
     Files,
-    FileText,
     MessageSquare,
     Lightbulb,
     BarChart3,
@@ -21,7 +20,6 @@ import { motion } from "framer-motion";
 const sidebarItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Documents", href: "/documents", icon: Files },
-    { name: "Summaries", href: "/summaries", icon: FileText },
     { name: "AI Chat", href: "/chat", icon: MessageSquare },
     { name: "Quiz Generator", href: "/quiz", icon: Lightbulb },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
