@@ -12,8 +12,9 @@ const publicGroupRoutes = ["/auth/login", "/auth/register", "/auth/forgot-passwo
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isAuthRoute = publicRoutes.includes(pathname) || publicGroupRoutes.includes(pathname);
+    const isAdminRoute = pathname.startsWith("/admin");
 
-    if (isAuthRoute) {
+    if (isAuthRoute || isAdminRoute) {
         return <>{children}</>;
     }
 
