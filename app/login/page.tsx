@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, BrainCircuit, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, BrainCircuit, Loader2, ShieldCheck } from "lucide-react";
 import { LoginSchema, LoginInput } from "@/app/shared/schemas";
 import { cn } from "@/lib/utils";
 
@@ -143,6 +143,17 @@ export default function LoginPage() {
                         Create one
                     </Link>
                 </p>
+
+                <div className="mt-4 flex justify-center">
+                    <button
+                        type="button"
+                        onClick={() => router.push("/admin/login")}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-400 transition-all hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300"
+                    >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        Admin Panel
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -83,6 +83,11 @@ export interface DashboardStatsResponse {
 }
 
 export const api = {
+    admin: {
+        listUsers: (token: string) =>
+            request<{ users: AuthUser[] }>('/admin/users', {}, token),
+    },
+
     auth: {
         register: (body: {
             full_name: string;
