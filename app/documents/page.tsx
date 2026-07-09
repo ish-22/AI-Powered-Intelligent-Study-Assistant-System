@@ -35,6 +35,14 @@ interface Doc {
     status: string;
     type: string;
     file_path?: string;
+    summary?: string;
+    quiz_data?: QuizQuestion[];
+}
+
+interface QuizQuestion {
+    question: string;
+    options: string[];
+    answer: string;
 }
 
 const STORAGE = process.env.NEXT_PUBLIC_STORAGE_URL || "http://127.0.0.1:8000/storage";
@@ -57,6 +65,12 @@ export default function DocumentsPage() {
     const [viewDoc, setViewDoc] = useState<Doc | null>(null);
     const [summaryDoc, setSummaryDoc] = useState<Doc | null>(null);
     const [quizDoc, setQuizDoc] = useState<Doc | null>(null);
+    const [summaryContent, setSummaryContent] = useState<string>("");
+    const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState("");
+    const [revealedAnswers, setRevealedAnswers] = useState<Record<number, boolean>>({});
+    const [quizCount, setQuizCount] = useState(10);
 
     useEffect(() => {
         if (!token) return;
@@ -131,6 +145,60 @@ export default function DocumentsPage() {
             }, 600);
         }
     }
+
+    async function handleGenerateSummary(doc: Doc) {
+        setSummaryDoc(doc);
+        setAiError("");
+        // Use cached summary if present
+        if (doc.summary) { setSummaryContent(doc.summary); return; }
+        setSummaryContent("");
+        setAiLoading(true);
+        try {
+            const res = await fetch(`${API}/documents/${doc.id}/summary`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to generate summary.");
+            setSummaryContent(data.summary);
+            // Update cache in docs list
+            setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, summary: data.summary } : d));
+        } catch (err: any) {
+            setAiError(err.message);
+        } finally {
+            setAiLoading(false);
+        }
+    }
+
+    async function handleGenerateQuiz(doc: Doc, count?: number) {
+        const questionCount = count ?? quizCount;
+        setQuizDoc(doc);
+        setRevealedAnswers({});
+        setAiError("");
+        // Use cached quiz only if count matches what's cached
+        if (doc.quiz_data && doc.quiz_data.length > 0 && doc.quiz_data.length === questionCount) {
+            setQuizQuestions(doc.quiz_data);
+            return;
+        }
+        setQuizQuestions([]);
+        setAiLoading(true);
+        try {
+            const res = await fetch(`${API}/documents/${doc.id}/quiz`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ count: questionCount }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to generate quiz.");
+            setQuizQuestions(data.quiz);
+            setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, quiz_data: data.quiz } : d));
+        } catch (err: any) {
+            setAiError(err.message);
+        } finally {
+            setAiLoading(false);
+        }
+    }
+
 
     async function handleDelete(id: string) {
         if (!confirm("Delete this document?")) return;
@@ -246,28 +314,48 @@ export default function DocumentsPage() {
                 {summaryDoc && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                        onClick={() => setSummaryDoc(null)}>
+                        onClick={() => { setSummaryDoc(null); setAiError(""); }}>
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-card border border-white/10 rounded-3xl p-8 w-full max-w-md mx-4 shadow-2xl"
+                            className="bg-card border border-white/10 rounded-3xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] flex flex-col"
                             onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold flex items-center gap-2"><Sparkles className="h-5 w-5 text-indigo-500" /> Generate Summary</h3>
-                                <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setSummaryDoc(null)}><X className="h-4 w-4" /></Button>
+                            <div className="flex items-center justify-between mb-4 shrink-0">
+                                <h3 className="text-lg font-bold flex items-center gap-2"><Sparkles className="h-5 w-5 text-indigo-500" /> AI Summary</h3>
+                                <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => { setSummaryDoc(null); setAiError(""); }}><X className="h-4 w-4" /></Button>
                             </div>
-                            <div className="p-4 rounded-2xl bg-muted/40 mb-6">
-                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Document</p>
-                                <p className="font-semibold truncate">{summaryDoc.name}</p>
-                                <p className="text-sm text-muted-foreground">{summaryDoc.subject}</p>
+                            <div className="p-3 rounded-xl bg-muted/40 mb-4 shrink-0">
+                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Document</p>
+                                <p className="font-semibold truncate text-sm">{summaryDoc.name}</p>
                             </div>
-                            <div className="p-6 rounded-2xl border-2 border-dashed border-indigo-500/20 bg-indigo-500/5 text-center mb-6">
-                                <BookOpen className="h-10 w-10 text-indigo-400 mx-auto mb-3" />
-                                <p className="font-semibold text-indigo-600 dark:text-indigo-400">AI Summary Generation</p>
-                                <p className="text-sm text-muted-foreground mt-1">This feature will analyze your document and generate a concise summary using AI.</p>
-                                <Badge variant="outline" className="mt-3 rounded-lg text-xs">Coming Soon</Badge>
+
+                            {/* Content area */}
+                            <div className="flex-1 overflow-y-auto min-h-[200px]">
+                                {aiLoading && (
+                                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                                        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                        <p className="text-sm text-muted-foreground animate-pulse">Analyzing document with AI...</p>
+                                    </div>
+                                )}
+                                {aiError && !aiLoading && (
+                                    <div className="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                        <AlertCircle className="h-4 w-4 shrink-0" />{aiError}
+                                    </div>
+                                )}
+                                {summaryContent && !aiLoading && (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 whitespace-pre-wrap text-sm leading-relaxed">
+                                        {summaryContent}
+                                    </div>
+                                )}
                             </div>
-                            <Button className="w-full rounded-xl gradient-bg border-none" disabled>
-                                <Sparkles className="mr-2 h-4 w-4" /> Generate Summary
-                            </Button>
+
+                            <div className="mt-4 shrink-0">
+                                <Button
+                                    className="w-full rounded-xl gradient-bg border-none"
+                                    onClick={() => { setSummaryContent(""); handleGenerateSummary({ ...summaryDoc, summary: undefined }); }}
+                                    disabled={aiLoading}
+                                >
+                                    {aiLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Sparkles className="mr-2 h-4 w-4" />{summaryContent ? "Regenerate Summary" : "Generate Summary"}</>}
+                                </Button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
@@ -278,28 +366,140 @@ export default function DocumentsPage() {
                 {quizDoc && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                        onClick={() => setQuizDoc(null)}>
+                        onClick={() => { setQuizDoc(null); setAiError(""); }}>
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-card border border-white/10 rounded-3xl p-8 w-full max-w-md mx-4 shadow-2xl"
+                            className="bg-card border border-white/10 rounded-3xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] flex flex-col"
                             onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold flex items-center gap-2"><HelpCircle className="h-5 w-5 text-purple-500" /> Generate Quiz</h3>
-                                <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setQuizDoc(null)}><X className="h-4 w-4" /></Button>
+
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-4 shrink-0">
+                                <h3 className="text-lg font-bold flex items-center gap-2"><HelpCircle className="h-5 w-5 text-purple-500" /> AI Quiz Generator</h3>
+                                <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => { setQuizDoc(null); setAiError(""); }}><X className="h-4 w-4" /></Button>
                             </div>
-                            <div className="p-4 rounded-2xl bg-muted/40 mb-6">
-                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Document</p>
-                                <p className="font-semibold truncate">{quizDoc.name}</p>
-                                <p className="text-sm text-muted-foreground">{quizDoc.subject}</p>
+
+                            {/* Document pill */}
+                            <div className="p-3 rounded-xl bg-muted/40 mb-4 shrink-0">
+                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-0.5">Document</p>
+                                <p className="font-semibold truncate text-sm">{quizDoc.name}</p>
                             </div>
-                            <div className="p-6 rounded-2xl border-2 border-dashed border-purple-500/20 bg-purple-500/5 text-center mb-6">
-                                <Lightbulb className="h-10 w-10 text-purple-400 mx-auto mb-3" />
-                                <p className="font-semibold text-purple-600 dark:text-purple-400">AI Quiz Generation</p>
-                                <p className="text-sm text-muted-foreground mt-1">This feature will create quiz questions from your document to test your knowledge.</p>
-                                <Badge variant="outline" className="mt-3 rounded-lg text-xs">Coming Soon</Badge>
+
+                            {/* ── Quiz Count Picker ── */}
+                            <div className="mb-4 shrink-0 p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10">
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <Lightbulb className="h-3.5 w-3.5 text-purple-400" />
+                                    Number of Questions
+                                </p>
+                                {/* Preset chips */}
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {[5, 10, 15, 20, 30, 50, 100].map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => { setQuizCount(n); setQuizQuestions([]); }}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-xl text-sm font-semibold border transition-all",
+                                                quizCount === n
+                                                    ? "bg-purple-600 border-purple-500 text-white shadow-md shadow-purple-500/20"
+                                                    : "bg-muted/50 border-transparent hover:border-purple-500/40 hover:text-purple-400"
+                                            )}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Custom slider + input */}
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs text-muted-foreground w-4">1</span>
+                                    <input
+                                        type="range"
+                                        min={1}
+                                        max={100}
+                                        value={quizCount}
+                                        onChange={e => { setQuizCount(Number(e.target.value)); setQuizQuestions([]); }}
+                                        className="flex-1 h-2 accent-purple-500 cursor-pointer"
+                                    />
+                                    <span className="text-xs text-muted-foreground w-8">100</span>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={100}
+                                        value={quizCount}
+                                        onChange={e => {
+                                            const v = Math.min(100, Math.max(1, Number(e.target.value)));
+                                            setQuizCount(v);
+                                            setQuizQuestions([]);
+                                        }}
+                                        className="w-16 text-center rounded-xl border border-purple-500/30 bg-muted/50 text-sm font-bold py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                                    />
+                                    <span className="text-xs text-muted-foreground">questions</span>
+                                </div>
                             </div>
-                            <Button className="w-full rounded-xl border-none bg-purple-600 hover:bg-purple-700 text-white" disabled>
-                                <Lightbulb className="mr-2 h-4 w-4" /> Generate Quiz
-                            </Button>
+
+                            {/* Quiz Questions display */}
+                            <div className="flex-1 overflow-y-auto space-y-4">
+                                {aiLoading && (
+                                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                                        <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                                        <p className="text-sm text-muted-foreground animate-pulse">Generating {quizCount} quiz questions with AI...</p>
+                                    </div>
+                                )}
+                                {aiError && !aiLoading && (
+                                    <div className="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                        <AlertCircle className="h-4 w-4 shrink-0" />{aiError}
+                                    </div>
+                                )}
+                                {quizQuestions.length > 0 && !aiLoading && (
+                                    <>
+                                        <p className="text-xs text-muted-foreground font-semibold px-1">{quizQuestions.length} question{quizQuestions.length !== 1 ? "s" : ""} generated</p>
+                                        {quizQuestions.map((q, i) => (
+                                            <div key={i} className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10">
+                                                <p className="font-semibold text-sm mb-3"><span className="text-purple-400 mr-2">Q{i + 1}.</span>{q.question}</p>
+                                                <div className="space-y-2">
+                                                    {q.options.map((opt, j) => (
+                                                        <div key={j} className={cn(
+                                                            "px-3 py-2 rounded-xl text-sm transition-all",
+                                                            revealedAnswers[i] && opt === q.answer
+                                                                ? "bg-green-500/20 border border-green-500/40 text-green-400 font-semibold"
+                                                                : "bg-muted/40 border border-transparent"
+                                                        )}>
+                                                            {opt}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="mt-3 text-xs text-purple-400 hover:text-purple-300 h-7 px-2"
+                                                    onClick={() => setRevealedAnswers(prev => ({ ...prev, [i]: !prev[i] }))}
+                                                >
+                                                    {revealedAnswers[i] ? "Hide Answer" : "Reveal Answer"}
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                {!aiLoading && quizQuestions.length === 0 && !aiError && (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                                        <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center">
+                                            <Lightbulb className="h-7 w-7 text-purple-400" />
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">Choose your question count above and click <span className="font-semibold text-purple-400">Generate Quiz</span>.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer button */}
+                            <div className="mt-4 shrink-0">
+                                <Button
+                                    className="w-full rounded-xl border-none bg-purple-600 hover:bg-purple-500 text-white font-semibold"
+                                    onClick={() => { setQuizQuestions([]); handleGenerateQuiz({ ...quizDoc, quiz_data: undefined }, quizCount); }}
+                                    disabled={aiLoading}
+                                >
+                                    {aiLoading
+                                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating {quizCount} questions...</>
+                                        : <><Lightbulb className="mr-2 h-4 w-4" />{quizQuestions.length > 0 ? `Regenerate (${quizCount} questions)` : `Generate ${quizCount} Questions`}</>
+                                    }
+                                </Button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
@@ -475,8 +675,8 @@ export default function DocumentsPage() {
                                             <DropdownMenuContent align="end" className="w-56 rounded-xl">
                                                 <DropdownMenuItem className="cursor-pointer" onClick={() => setViewDoc(doc)}><Eye className="mr-2 h-4 w-4" /> View Document</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="cursor-pointer text-indigo-600" onClick={() => setSummaryDoc(doc)}><Sparkles className="mr-2 h-4 w-4" /> Generate Summary</DropdownMenuItem>
-                                                <DropdownMenuItem className="cursor-pointer text-purple-600" onClick={() => setQuizDoc(doc)}><Lightbulb className="mr-2 h-4 w-4" /> Generate Quiz</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer text-indigo-600" onClick={() => handleGenerateSummary(doc)}><Sparkles className="mr-2 h-4 w-4" /> Generate Summary</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer text-purple-600" onClick={() => handleGenerateQuiz(doc)}><Lightbulb className="mr-2 h-4 w-4" /> Generate Quiz</DropdownMenuItem>
                                                 <DropdownMenuItem className="cursor-pointer text-emerald-600"><MessageSquare className="mr-2 h-4 w-4" /> Open AI Chat</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="cursor-pointer text-red-600" onClick={() => handleDelete(doc.id)}>
@@ -552,8 +752,8 @@ export default function DocumentsPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-48 rounded-xl">
                                                 <DropdownMenuItem className="cursor-pointer" onClick={() => setViewDoc(doc)}><Eye className="mr-2 h-4 w-4" /> View</DropdownMenuItem>
-                                                <DropdownMenuItem className="cursor-pointer text-indigo-600" onClick={() => setSummaryDoc(doc)}><Sparkles className="mr-2 h-4 w-4" /> Summary</DropdownMenuItem>
-                                                <DropdownMenuItem className="cursor-pointer text-purple-600" onClick={() => setQuizDoc(doc)}><Lightbulb className="mr-2 h-4 w-4" /> Quiz</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer text-indigo-600" onClick={() => handleGenerateSummary(doc)}><Sparkles className="mr-2 h-4 w-4" /> Summary</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer text-purple-600" onClick={() => handleGenerateQuiz(doc)}><Lightbulb className="mr-2 h-4 w-4" /> Quiz</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="cursor-pointer text-red-600" onClick={() => handleDelete(doc.id)}>
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
