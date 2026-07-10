@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
     Send, Plus, MessageSquare, Trash2, Copy, RotateCcw,
     Sparkles, User, Bot, Search, MoreVertical, Loader2,
-    AlertCircle, CheckCheck, PenLine
+    AlertCircle, CheckCheck, PenLine, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ interface Message  { id: string; role: "user" | "assistant"; content: string; cr
 export default function ChatPage() {
     const { data: session } = useSession();
     const token = (session as any)?.accessToken;
+    const searchParams = useSearchParams();
 
     const [chats, setChats]               = useState<ChatItem[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -39,7 +41,9 @@ export default function ChatPage() {
     const [error, setError]               = useState("");
     const [copied, setCopied]             = useState<string | null>(null);
     const [searchQuery, setSearchQuery]   = useState("");
+    const [docContext, setDocContext]      = useState<{ id: string; name: string } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const docChatStarted = useRef(false);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -67,6 +71,36 @@ export default function ChatPage() {
 
     useEffect(() => { fetchChats(); }, [fetchChats]);
 
+    // Auto-start a document chat when arriving from recommendations page
+    useEffect(() => {
+        const docId   = searchParams.get("document_id");
+        const docName = searchParams.get("document_name");
+        if (!docId || !token || docChatStarted.current) return;
+        docChatStarted.current = true;
+        setDocContext({ id: docId, name: decodeURIComponent(docName ?? "Document") });
+        startDocumentChat(docId, decodeURIComponent(docName ?? "Document"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, searchParams]);
+
+    const startDocumentChat = async (docId: string, docName: string) => {
+        if (!token) return;
+        try {
+            const res = await fetch(`${API}/chats`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ document_id: docId }),
+            });
+            const data = await res.json();
+            const chat = { title: `Chat about: ${docName}`, ...data.chat };
+            setChats(prev => [chat, ...prev]);
+            setActiveChatId(chat.id);
+            // Send an opening message so the AI introduces the document
+            await doSend(chat.id, `Hi! I'd like to discuss the document "${docName}". Can you give me a brief overview of what it covers?`);
+        } catch {
+            setError("Failed to start document chat.");
+        }
+    };
+
     // Load messages for active chat
     const openChat = async (id: string) => {
         setActiveChatId(id);
@@ -90,14 +124,16 @@ export default function ChatPage() {
     // Create new chat then open it
     const newChat = async () => {
         if (!token) return;
+        setDocContext(null);
         try {
             const res = await fetch(`${API}/chats`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
-            setChats((prev) => [data.chat, ...prev]);
-            await openChat(data.chat.id);
+            const chat = { title: 'New Chat', ...data.chat };
+            setChats((prev) => [chat, ...prev]);
+            await openChat(chat.id);
         } catch {
             setError("Failed to create chat.");
         }
@@ -124,6 +160,7 @@ export default function ChatPage() {
     // Send message
     const sendMessage = async (content: string = input) => {
         if (!content.trim() || sending) return;
+        if (!token) { setError("Please log in again — session expired."); return; }
         if (!activeChatId) {
             // Auto-create a chat first
             try {
@@ -132,9 +169,10 @@ export default function ChatPage() {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const data = await res.json();
-                setChats((prev) => [data.chat, ...prev]);
-                setActiveChatId(data.chat.id);
-                await doSend(data.chat.id, content);
+                const chat = { title: 'New Chat', ...data.chat };
+                setChats((prev) => [chat, ...prev]);
+                setActiveChatId(chat.id);
+                await doSend(chat.id, content);
             } catch {
                 setError("Failed to start chat.");
             }
@@ -144,6 +182,7 @@ export default function ChatPage() {
     };
 
     const doSend = async (chatId: string, content: string) => {
+        if (!token) { setError("Please log in again — session expired."); return; }
         const userMsg: Message = {
             id: `tmp-${Date.now()}`,
             role: "user",
@@ -166,12 +205,15 @@ export default function ChatPage() {
                 body: JSON.stringify({ message: content }),
             });
 
-            if (!res.ok) throw new Error("AI request failed");
-
             const data = await res.json();
-            setMessages((prev) => [...prev, data.message]);
 
-            // Update chat title in sidebar if it changed
+            if (!res.ok) {
+                throw new Error(data?.message || `Request failed (${res.status})`);
+            }
+
+            const aiMsg = { ...data.message, id: data.message?.id ?? `ai-${Date.now()}` };
+            setMessages((prev) => [...prev, aiMsg]);
+
             if (data.chat_title) {
                 setChats((prev) =>
                     prev.map((c) =>
@@ -180,8 +222,8 @@ export default function ChatPage() {
                 );
             }
             scrollToBottom();
-        } catch {
-            setError("Failed to get AI response. Check your API key.");
+        } catch (err: any) {
+            setError(err?.message || "Failed to send message.");
             setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
         } finally {
             setSending(false);
@@ -200,7 +242,7 @@ export default function ChatPage() {
     };
 
     const filteredChats = chats.filter((c) =>
-        c.title.toLowerCase().includes(searchQuery.toLowerCase())
+        c.title?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const activeChat = chats.find((c) => c.id === activeChatId);
@@ -240,9 +282,9 @@ export default function ChatPage() {
                                 {searchQuery ? "No chats found." : "No chats yet. Start a new one!"}
                             </p>
                         ) : (
-                            filteredChats.map((chat) => (
+                            filteredChats.map((chat, idx) => (
                                 <div
-                                    key={chat.id}
+                                    key={chat.id ?? `chat-${idx}`}
                                     onClick={() => openChat(chat.id)}
                                     className={cn(
                                         "w-full flex items-center gap-3 p-3 rounded-2xl transition-all hover:bg-muted group text-left cursor-pointer",
@@ -298,6 +340,23 @@ export default function ChatPage() {
                     </Button>
                 </div>
 
+                {/* Document context banner */}
+                <AnimatePresence>
+                    {docContext && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="mx-4 mt-3 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs"
+                        >
+                            <FileText className="h-4 w-4 shrink-0" />
+                            <span className="font-semibold">Discussing:</span>
+                            <span className="truncate flex-1">{docContext.name}</span>
+                            <button onClick={() => setDocContext(null)} className="text-indigo-400 hover:text-indigo-300 shrink-0">✕</button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Error banner */}
                 <AnimatePresence>
                     {error && (
@@ -340,8 +399,8 @@ export default function ChatPage() {
                         </div>
                     )}
 
-                    {messages.map((msg) => (
-                        <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    {messages.map((msg, idx) => (
+                        <motion.div key={msg.id ?? `msg-${idx}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                             className={cn("flex gap-4 max-w-3xl mx-auto", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
 
                             <Avatar className={cn("h-9 w-9 shrink-0 flex items-center justify-center rounded-xl",
@@ -379,10 +438,10 @@ export default function ChatPage() {
                             </Avatar>
                             <div className="bg-background/80 border border-white/5 p-4 rounded-3xl rounded-tl-none">
                                 <div className="flex gap-1 items-center">
-                                    {[0, 0.2, 0.4].map((delay, i) => (
-                                        <motion.div key={i}
+                                    {(["dot-0", "dot-1", "dot-2"] as const).map((key, i) => (
+                                        <motion.div key={key}
                                             animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
-                                            transition={{ repeat: Infinity, duration: 1, delay }}
+                                            transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
                                             className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                                     ))}
                                 </div>

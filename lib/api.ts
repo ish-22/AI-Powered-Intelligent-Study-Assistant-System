@@ -82,6 +82,40 @@ export interface DashboardStatsResponse {
     };
 }
 
+export interface Recommendation {
+    id: number;
+    topic: string;
+    priority: 'High' | 'Medium' | 'Low';
+    confidence: number;
+    estimated_minutes: number;
+    reason: string;
+    action: 'quiz' | 'summary' | 'review';
+    subject: string;
+    document_id?: string;
+    document_name?: string;
+}
+
+export interface StudyPlanItem {
+    time: string;
+    task: string;
+    type: 'quiz' | 'summary' | 'review' | 'break';
+    duration_mins: number;
+}
+
+export interface RecommendationsResponse {
+    recommendations: Recommendation[];
+    study_plan: StudyPlanItem[];
+    focus_tip: string;
+    ai_insight: string;
+    summary: {
+        total_docs: number;
+        with_quiz: number;
+        with_summary: number;
+        avg_score: number;
+        streak: number;
+    };
+}
+
 export const api = {
     admin: {
         listUsers: (token: string) =>
@@ -144,9 +178,17 @@ export const api = {
             ),
     },
 
+    recommendations: {
+        generate: (token: string) =>
+            request<RecommendationsResponse>('/recommendations/generate', { method: 'POST' }, token),
+    },
+
     documents: {
         getAll: (token: string) =>
             request<{ documents: any[] }>('/documents', {}, token),
+
+        generateSummary: (token: string, id: string) =>
+            request<{ summary: string }>(`/documents/${id}/summary`, { method: 'POST' }, token),
 
         generateQuiz: (token: string, id: string, count: number, difficulty: string = 'medium', topic: string = '') =>
             request<{ quiz: Array<{ question: string; options: string[]; answer: string; explanation?: string }> }>(
