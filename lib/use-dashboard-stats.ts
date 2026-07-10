@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { api, type DashboardStats } from "@/lib/api";
+import { type DashboardStats } from "@/lib/api";
+import { fetchDashboardData, invalidateDashboardCache } from "@/lib/dashboard-cache";
 
 const DEFAULT_STATS: DashboardStats = {
     documents_uploaded: 0,
@@ -18,9 +19,17 @@ export function useDashboardStats() {
     const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     useEffect(() => {
         const token = session?.accessToken;
+
+        if (status === "loading") return;
 
         if (!token) {
             setStats(DEFAULT_STATS);
@@ -28,53 +37,37 @@ export function useDashboardStats() {
             return;
         }
 
-        let active = true;
         setLoading(true);
         setError(null);
 
-        api.dashboard
-            .getStats(token)
-            .then(({ stats: fetchedStats }) => {
-                if (active) {
-                    setStats(fetchedStats);
-                    setError(null);
+        fetchDashboardData(token)
+            .then(({ stats: s }) => {
+                if (mountedRef.current) {
+                    setStats(s);
+                    setLoading(false);
                 }
             })
             .catch((err) => {
-                if (active) {
-                    console.error("Failed to fetch dashboard stats:", err);
-                    setError(err instanceof Error ? err.message : "Failed to load dashboard stats");
+                if (mountedRef.current) {
+                    setError(err instanceof Error ? err.message : "Failed to load stats");
                     setStats(DEFAULT_STATS);
+                    setLoading(false);
                 }
-            })
-            .finally(() => {
-                if (active) setLoading(false);
             });
-
-        return () => {
-            active = false;
-        };
-    }, [session?.accessToken]);
+    }, [session?.accessToken, status]);
 
     const updateStats = async (newStats: Partial<DashboardStats>) => {
         const token = session?.accessToken;
         if (!token) throw new Error("No authentication token");
 
-        try {
-            const response = await api.dashboard.updateStats(token, newStats);
-            setStats(response.stats);
-            return response.stats;
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to update stats";
-            setError(errorMessage);
-            throw err;
-        }
+        const { api } = await import("@/lib/api");
+        const response = await api.dashboard.updateStats(token, newStats);
+        invalidateDashboardCache();
+        setStats(response.stats);
+        return response.stats;
     };
 
-    return {
-        stats,
-        loading,
-        error,
-        updateStats,
-    };
+    return { stats, loading, error, updateStats };
 }
+
+export { invalidateDashboardCache };
