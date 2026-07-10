@@ -140,15 +140,28 @@ export default function QuizPage() {
         setUserAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
 
-    const handleSubmitQuiz = () => {
+    const normalise = (s: string) => s.trim().toLowerCase();
+
+    const handleSubmitQuiz = async () => {
         let calculatedScore = 0;
         questions.forEach(q => {
-            if (userAnswers[q.id] === q.correctAnswer) {
+            if (userAnswers[q.id] && normalise(userAnswers[q.id]) === normalise(q.correctAnswer)) {
                 calculatedScore += 1;
             }
         });
         setScore(calculatedScore);
         setState("results");
+
+        // Persist quiz score to backend
+        if (token && questions.length > 0) {
+            const pct = Math.round((calculatedScore / questions.length) * 100);
+            try {
+                await api.dashboard.updateStats(token, {
+                    quizzes_completed: 1,
+                    avg_quiz_score: pct,
+                });
+            } catch { /* non-blocking */ }
+        }
     };
 
     const formatTime = (seconds: number) => {
@@ -466,7 +479,8 @@ export default function QuizPage() {
                             <div className="space-y-4">
                                 {questions.map((q, idx) => {
                                     // Remove any exact prefixing to allow slightly mismatched comparisons, but exact is fine if backend follows structure
-                                    const isCorrect = userAnswers[q.id] === q.correctAnswer;
+                                    const isCorrect = userAnswers[q.id] !== undefined &&
+                                        normalise(userAnswers[q.id]) === normalise(q.correctAnswer);
                                     return (
                                         <Card key={q.id} className={cn(
                                             "border-none bg-card/40 backdrop-blur-xl rounded-3xl overflow-hidden",
