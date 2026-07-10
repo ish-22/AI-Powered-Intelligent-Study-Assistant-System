@@ -8,14 +8,11 @@ import {
     Trophy,
     Zap,
     Download,
-    ChevronRight,
-    Sparkles,
     Calendar,
-    Filter,
     ArrowUpRight,
-    ArrowDownRight,
     Target,
-    Brain
+    Brain,
+    Sparkles
 } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,64 +23,47 @@ import {
     XAxis, YAxis,
     CartesianGrid, Tooltip,
     ResponsiveContainer,
-    PieChart, Pie, Cell,
-    RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-    LineChart, Line, Legend
+    RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-// Mock Data
-const weeklyActivity = [
-    { day: "Mon", hours: 2.5, score: 82 },
-    { day: "Tue", hours: 4.2, score: 78 },
-    { day: "Wed", hours: 1.8, score: 92 },
-    { day: "Thu", hours: 5.5, score: 85 },
-    { day: "Fri", hours: 3.0, score: 88 },
-    { day: "Sat", hours: 6.8, score: 95 },
-    { day: "Sun", hours: 4.5, score: 91 },
-];
-
-const monthlyTrend = [
-    { month: "Jan", quizzes: 12, avgScore: 68 },
-    { month: "Feb", quizzes: 18, avgScore: 72 },
-    { month: "Mar", quizzes: 15, avgScore: 75 },
-    { month: "Apr", quizzes: 22, avgScore: 82 },
-    { month: "May", quizzes: 28, avgScore: 85 },
-    { month: "Jun", quizzes: 32, avgScore: 88 },
-];
-
-const subjectDistribution = [
-    { name: "Mathematics", score: 92, full: 100 },
-    { name: "Physics", score: 88, full: 100 },
-    { name: "Biology", score: 75, full: 100 },
-    { name: "History", score: 62, full: 100 },
-    { name: "Economics", score: 85, full: 100 },
-];
-
-const focusAreas = [
-    {
-        name: "Weak Areas", data: [
-            { name: "Ancient History", value: 45 },
-            { name: "Organic Chemistry", value: 52 },
-            { name: "Thermodynamics", value: 38 },
-        ], color: "#ef4444"
-    },
-    {
-        name: "Strong Areas", data: [
-            { name: "Linear Algebra", value: 95 },
-            { name: "Cytology", value: 88 },
-            { name: "Micro-Econ", value: 91 },
-        ], color: "#10b981"
-    }
-];
+import { useDashboardStats } from "@/lib/use-dashboard-stats";
+import { useDashboardOverview } from "@/lib/use-dashboard-overview";
 
 export default function AnalyticsPage() {
-    const [isMounted, setIsMounted] = React.useState(false);
+    const { stats, loading: statsLoading } = useDashboardStats();
+    const { overview, loading: overviewLoading } = useDashboardOverview();
 
-    React.useEffect(() => {
-        setIsMounted(true);
-    }, []);
+    // Safety check for Recharts hydration
+    const [isMounted, setIsMounted] = React.useState(false);
+    React.useEffect(() => setIsMounted(true), []);
+
+    const isLoading = statsLoading || overviewLoading;
+
+    // Transform backend shapes into graph shapes if needed
+    const focusAreas = [
+        {
+            name: "Weak Areas",
+            data: overview.weak_topics?.length ? overview.weak_topics.map(t => ({ name: t.name, value: t.score })) : [{ name: "Need more data", value: 0 }],
+            color: "#ef4444"
+        },
+        {
+            name: "Strong Areas",
+            data: overview.strong_topics?.length ? overview.strong_topics.map(t => ({ name: t.name, value: t.score })) : [{ name: "Need more data", value: 0 }],
+            color: "#10b981"
+        }
+    ];
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6">
+                <div className="relative">
+                    <div className="h-16 w-16 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                </div>
+                <h2 className="text-xl font-bold text-muted-foreground animate-pulse">Loading Analytics Data...</h2>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-10 pb-12 animate-fade-in">
@@ -109,28 +89,28 @@ export default function AnalyticsPage() {
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <DashboardCard
                     title="Average Score"
-                    value="88.4%"
+                    value={`${stats.avg_quiz_score}%`}
                     icon={Trophy}
                     trend={{ value: "4.2%", isUp: true }}
                     gradient
                 />
                 <DashboardCard
                     title="Total Quizzes"
-                    value="127"
+                    value={stats.quizzes_completed.toString()}
                     icon={BarChart3}
-                    trend={{ value: "12", isUp: true }}
+                    trend={{ value: "12 This Month", isUp: true }}
                 />
                 <DashboardCard
                     title="Study Hours"
-                    value="248.5"
+                    value={stats.study_time_hours.toString()}
                     icon={Clock}
-                    trend={{ value: "18.5h", isUp: true }}
+                    trend={{ value: "+2.5h", isUp: true }}
                 />
                 <DashboardCard
                     title="Learning Streak"
-                    value="14 Days"
+                    value={`${stats.learning_streak} Days`}
                     icon={Zap}
-                    trend={{ value: "Max: 22", isUp: true }}
+                    trend={{ value: "Keep it up!", isUp: true }}
                     gradient
                 />
             </section>
@@ -142,31 +122,23 @@ export default function AnalyticsPage() {
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-xl font-bold">Monthly Progress</CardTitle>
-                            <CardDescription>Correlation between quizzes completed and average score</CardDescription>
+                            <CardDescription>Average Quiz Score Trend over the last 6 months</CardDescription>
                         </div>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <div className="h-2 w-2 rounded-full bg-indigo-500" />
                                 <span className="text-[10px] font-bold text-muted-foreground uppercase">Score</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="h-2 w-2 rounded-full bg-purple-500" />
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Quizzes</span>
-                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="h-[400px] mt-4">
                         {isMounted ? (
                             <ResponsiveContainer width="100%" height={320}>
-                                <AreaChart data={monthlyTrend}>
+                                <AreaChart data={overview.quiz_trend}>
                                     <defs>
                                         <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
                                             <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorQuizzes" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
@@ -175,8 +147,7 @@ export default function AnalyticsPage() {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
                                     />
-                                    <Area type="monotone" dataKey="avgScore" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
-                                    <Area type="monotone" dataKey="quizzes" stroke="#a855f7" strokeWidth={4} fillOpacity={1} fill="url(#colorQuizzes)" />
+                                    <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         ) : (
@@ -194,11 +165,11 @@ export default function AnalyticsPage() {
                     <CardContent className="h-[400px]">
                         {isMounted ? (
                             <ResponsiveContainer width="100%" height={320}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={subjectDistribution}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={overview.subject_performance}>
                                     <PolarGrid stroke="#88888820" />
-                                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: '#888888' }} />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#888888' }} />
                                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                    <Radar name="Performance" dataKey="score" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
+                                    <Radar name="Score" dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.6} />
                                     <Tooltip />
                                 </RadarChart>
                             </ResponsiveContainer>
@@ -214,21 +185,21 @@ export default function AnalyticsPage() {
                 {/* Weekly Progress Bar */}
                 <Card className="border-none bg-card/40 backdrop-blur-xl shadow-sm rounded-3xl overflow-hidden p-2">
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-xl font-bold">Weekly Intensity</CardTitle>
+                        <CardTitle className="text-xl font-bold">Weekly Activity</CardTitle>
                         <TrendingUp className="h-5 w-5 text-emerald-500" />
                     </CardHeader>
                     <CardContent className="h-[300px] mt-2">
                         {isMounted ? (
                             <ResponsiveContainer width="100%" height={260}>
-                                <BarChart data={weeklyActivity}>
+                                <BarChart data={overview.weekly_progress}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888810" />
-                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '16px', border: '1px solid hsl(var(--border))' }}
                                         cursor={{ fill: '#88888810' }}
                                     />
-                                    <Bar dataKey="hours" radius={[6, 6, 0, 0]} fill="#6366f1" />
+                                    <Bar dataKey="sessions" radius={[6, 6, 0, 0]} fill="#6366f1" />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
@@ -267,14 +238,14 @@ export default function AnalyticsPage() {
                                         </div>
                                     </div>
                                 ))}
-                                <Button variant="ghost" className="w-full h-8 text-[10px] font-bold uppercase tracking-widest mt-2">View Full List</Button>
+                                <Button variant="ghost" className="w-full h-8 text-[10px] font-bold uppercase tracking-widest mt-2 hover:bg-black/5 dark:hover:bg-white/5">Analyze Full List</Button>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             </section>
 
-            {/* AI Performance Insight Section */}
+            {/* AI Performance Insight Section - Driven by Real Stats! */}
             <section className="mt-8">
                 <Card className="border-none bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 text-white rounded-[40px] p-10 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 h-64 w-64 bg-white/10 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-white/20 transition-all" />
@@ -284,22 +255,30 @@ export default function AnalyticsPage() {
                         </div>
                         <div className="flex-1 text-center lg:text-left">
                             <h2 className="text-3xl font-black tracking-tight mb-4">Neural Learning Insight</h2>
-                            <p className="text-indigo-100 leading-relaxed text-lg max-w-2xl">
-                                Based on your performance in the last 14 days, you have shown exponential growth in **Mathematical Reasoning** and **Data Analysis**. However, your focus on **Historical Context** has declined by 12%. We recommend dedicating 45 minutes tomorrow to your History document.
-                            </p>
+
+                            {/* Dynamic AI message based on real user stats */}
+                            {overview.strong_topics?.length > 0 && overview.weak_topics?.length > 0 ? (
+                                <p className="text-indigo-100 leading-relaxed text-lg max-w-2xl">
+                                    Based on your recent performance, you have shown incredible strength in <strong>{overview.strong_topics[0].name}</strong> ({overview.strong_topics[0].score}%).
+                                    However, your focus on <strong>{overview.weak_topics[0].name}</strong> could use some improvement.
+                                    We recommend generating a focused Quiz on <strong>{overview.weak_topics[0].name}</strong> to boost your score to parity!
+                                </p>
+                            ) : (
+                                <p className="text-indigo-100 leading-relaxed text-lg max-w-2xl">
+                                    You are doing a fantastic job studying! Your massive <strong>{stats.learning_streak} day learning streak</strong> shows high dedication. Create more documents and quizzes so our AI can generate deeper analysis of your academic blind spots.
+                                </p>
+                            )}
+
                             <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-4">
                                 <Button className="bg-white text-indigo-600 hover:bg-indigo-50 rounded-2xl h-12 px-8 font-bold text-sm shadow-xl">
-                                    Optimize Schedule
-                                </Button>
-                                <Button variant="ghost" className="text-white hover:bg-white/10 rounded-2xl h-12 px-8 font-bold text-sm">
-                                    View Detailed Recommendations
+                                    Optimize My Studies
                                 </Button>
                             </div>
                         </div>
                         <div className="hidden lg:block">
                             <div className="flex items-center gap-2 bg-emerald-500/20 px-6 py-3 rounded-2xl border border-emerald-500/30">
                                 <ArrowUpRight className="h-6 w-6 text-emerald-400" />
-                                <span className="text-xl font-bold">+18% Retention</span>
+                                <span className="text-xl font-bold">{stats.learning_streak > 3 ? "Highly Consistent" : "Warming Up"}</span>
                             </div>
                         </div>
                     </div>

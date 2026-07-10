@@ -143,4 +143,16 @@ export const api = {
                 token
             ),
     },
+
+    documents: {
+        getAll: (token: string) =>
+            request<{ documents: any[] }>('/documents', {}, token),
+
+        generateQuiz: (token: string, id: string, count: number, difficulty: string = 'medium', topic: string = '') =>
+            request<{ quiz: Array<{ question: string; options: string[]; answer: string; explanation?: string }> }>(
+                `/documents/${id}/quiz`,
+                { method: 'POST', body: JSON.stringify({ count, difficulty, topic }) },
+                token
+            ),
+    },
 };

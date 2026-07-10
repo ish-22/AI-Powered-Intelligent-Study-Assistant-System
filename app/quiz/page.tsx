@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
     BrainCircuit,
-    Clock,
     CheckCircle2,
     XCircle,
     ChevronRight,
@@ -17,78 +17,71 @@ import {
     PlayCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
-type QuizState = "setup" | "active" | "results";
+type QuizState = "setup" | "generating" | "active" | "results";
 
-// Mock Data
-const mockDocuments = [
-    { id: "1", title: "Quantum Physics Introduction" },
-    { id: "2", title: "Molecular Biology Theory" },
-    { id: "3", title: "Micro-Economics Fundamentals" },
-];
+interface Document {
+    id: string;
+    name: string;
+    subject?: string;
+}
 
-const mockQuestions = [
-    {
-        id: 1,
-        type: "mcq",
-        question: "Which particle is responsible for the electromagnetic force?",
-        options: ["Gluon", "W Boson", "Photon", "Graviton"],
-        correctAnswer: "Photon",
-        explanation: "Photons are the gauge bosons that mediate the electromagnetic interaction."
-    },
-    {
-        id: 2,
-        type: "tf",
-        question: "Quantum entanglement allows for faster-than-light communication.",
-        options: ["True", "False"],
-        correctAnswer: "False",
-        explanation: "While entanglement is instantaneous, it cannot be used to transmit information faster than light."
-    },
-    {
-        id: 3,
-        type: "mcq",
-        question: "What does the Heisenberg Uncertainty Principle state?",
-        options: [
-            "Energy is always conserved in a closed system.",
-            "The position and momentum of a particle cannot be measured simultaneously with absolute precision.",
-            "Light behaves both as a wave and a particle.",
-            "Every action has an equal and opposite reaction."
-        ],
-        correctAnswer: "The position and momentum of a particle cannot be measured simultaneously with absolute precision.",
-        explanation: "This is a fundamental limit of nature, not a measurement limitation."
-    }
-];
+interface Question {
+    id: number;
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    explanation?: string;
+}
 
 export default function QuizPage() {
+    const { data: session } = useSession();
+    const token = session?.accessToken;
+
     const [state, setState] = useState<QuizState>("setup");
+
+    // Data states
+    const [documents, setDocuments] = useState<Document[]>([]);
+    const [questions, setQuestions] = useState<Question[]>([]);
+    const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+
+    // Quiz states
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
-    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+    const [timeLeft, setTimeLeft] = useState(300);
     const [score, setScore] = useState(0);
+    const [error, setError] = useState<string | null>(null);
 
     // Setup States
     const [setupData, setSetupData] = useState({
         documentId: "",
-        topic: "",
         difficulty: "medium",
         count: "5",
-        types: ["mcq", "tf"]
+        topic: "",
+        timeLimit: "60", // seconds per question
     });
 
+    // Fetch documents on initial load
+    useEffect(() => {
+        if (!token) return;
+
+        setIsLoadingDocs(true);
+        api.documents.getAll(token)
+            .then(res => setDocuments(res.documents || []))
+            .catch(err => console.error("Failed to fetch documents", err))
+            .finally(() => setIsLoadingDocs(false));
+    }, [token]);
+
+    // Timer effect
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (state === "active" && timeLeft > 0) {
@@ -99,11 +92,48 @@ export default function QuizPage() {
         return () => clearInterval(timer);
     }, [state, timeLeft]);
 
-    const handleStartQuiz = () => {
-        setState("active");
-        setCurrentQuestionIndex(0);
-        setUserAnswers({});
-        setTimeLeft(parseInt(setupData.count) * 60);
+    const handleGenerateAndStart = async () => {
+        if (!token || !setupData.documentId) return;
+
+        setState("generating");
+        setError(null);
+
+        try {
+            const count = parseInt(setupData.count);
+            const response = await api.documents.generateQuiz(
+                token,
+                setupData.documentId,
+                count,
+                setupData.difficulty,
+                setupData.topic
+            );
+
+            if (!response.quiz || response.quiz.length === 0) {
+                throw new Error("No quiz questions generated.");
+            }
+
+            // Map backend structure to our frontend structure
+            const formattedQs: Question[] = response.quiz.map((q, idx) => ({
+                id: idx,
+                question: q.question,
+                options: q.options,
+                correctAnswer: q.answer,
+                explanation: q.explanation || "No explanation provided.",
+            }));
+
+            setQuestions(formattedQs);
+
+            // Start the quiz
+            setCurrentQuestionIndex(0);
+            setUserAnswers({});
+            // Multiply total questions by user's chosen timeLimit per question
+            setTimeLeft(count * parseInt(setupData.timeLimit));
+            setState("active");
+
+        } catch (err: any) {
+            setError(err.message || "Failed to generate quiz. Please try again.");
+            setState("setup");
+        }
     };
 
     const handleSelectAnswer = (questionId: number, answer: string) => {
@@ -112,7 +142,7 @@ export default function QuizPage() {
 
     const handleSubmitQuiz = () => {
         let calculatedScore = 0;
-        mockQuestions.forEach(q => {
+        questions.forEach(q => {
             if (userAnswers[q.id] === q.correctAnswer) {
                 calculatedScore += 1;
             }
@@ -142,24 +172,34 @@ export default function QuizPage() {
                     >
                         <div className="text-center space-y-2">
                             <h1 className="text-4xl font-extrabold tracking-tight">AI Quiz <span className="gradient-text">Generator</span></h1>
-                            <p className="text-muted-foreground">Customize your assessment and challenge your knowledge.</p>
+                            <p className="text-muted-foreground">Customize your assessment and challenge your knowledge using your uploaded documents.</p>
                         </div>
+
+                        {error && (
+                            <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-center font-semibold flex items-center justify-center gap-2">
+                                <AlertCircle className="h-5 w-5" />
+                                {error}
+                            </div>
+                        )}
 
                         <Card className="border-none bg-card/40 backdrop-blur-xl shadow-xl rounded-3xl overflow-hidden p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                 <div className="space-y-6">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Document</Label>
-                                        <Select onValueChange={(v) => setSetupData({ ...setupData, documentId: v })}>
+                                        <Select onValueChange={(v) => setSetupData({ ...setupData, documentId: v })} disabled={isLoadingDocs}>
                                             <SelectTrigger className="h-12 rounded-2xl bg-background/50 border-white/5">
-                                                <SelectValue placeholder="Choose a study document" />
+                                                <SelectValue placeholder={isLoadingDocs ? "Loading documents..." : "Choose a study document"} />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
-                                                {mockDocuments.map(doc => (
-                                                    <SelectItem key={doc.id} value={doc.id}>{doc.title}</SelectItem>
+                                                {documents.map(doc => (
+                                                    <SelectItem key={doc.id} value={doc.id.toString()}>{doc.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        {documents.length === 0 && !isLoadingDocs && (
+                                            <p className="text-xs text-red-400 mt-1">You don't have any documents. Upload one first.</p>
+                                        )}
                                     </div>
 
                                     <div className="space-y-2">
@@ -181,65 +221,87 @@ export default function QuizPage() {
                                             ))}
                                         </div>
                                     </div>
+                                </div>
 
+                                <div className="space-y-6">
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Number of Questions</Label>
-                                        <Select onValueChange={(v) => setSetupData({ ...setupData, count: v })}>
+                                        <Select value={setupData.count} onValueChange={(v) => setSetupData({ ...setupData, count: v })}>
                                             <SelectTrigger className="h-12 rounded-2xl bg-background/50 border-white/5">
                                                 <SelectValue placeholder="5 Questions" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
-                                                {["5", "10", "15", "20"].map(n => (
+                                                {["3", "5", "10", "15", "20"].map(n => (
                                                     <SelectItem key={n} value={n}>{n} Questions</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </div>
 
-                                <div className="space-y-6">
-                                    <div className="space-y-3">
-                                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Question Types</Label>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {[
-                                                { id: "mcq", label: "Multiple Choice" },
-                                                { id: "tf", label: "True / False" },
-                                                { id: "fib", label: "Fill in the Blanks" },
-                                                { id: "sa", label: "Short Answer" }
-                                            ].map((type) => (
-                                                <div key={type.id} className="flex items-center space-x-3 p-3 rounded-2xl border border-white/5 bg-background/20 hover:bg-white/5 transition-all cursor-pointer">
-                                                    <Checkbox
-                                                        id={type.id}
-                                                        checked={setupData.types.includes(type.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            if (checked) setSetupData({ ...setupData, types: [...setupData.types, type.id] });
-                                                            else setSetupData({ ...setupData, types: setupData.types.filter(t => t !== type.id) });
-                                                        }}
-                                                    />
-                                                    <Label htmlFor={type.id} className="flex-1 cursor-pointer font-medium">{type.label}</Label>
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Topic Focus (Optional)</Label>
+                                        <Input
+                                            placeholder="e.g. Focus on Newton's Third Law"
+                                            value={setupData.topic}
+                                            onChange={(e) => setSetupData({ ...setupData, topic: e.target.value })}
+                                            className="h-12 rounded-2xl bg-background/50 border-white/5"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground mt-1 px-1">If left empty, AI will test you on the entire document.</p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Time Per Question</Label>
+                                        <Select value={setupData.timeLimit} onValueChange={(v) => setSetupData({ ...setupData, timeLimit: v })}>
+                                            <SelectTrigger className="h-12 rounded-2xl bg-background/50 border-white/5">
+                                                <SelectValue placeholder="60 seconds" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="30">30 Seconds</SelectItem>
+                                                <SelectItem value="60">1 Minute</SelectItem>
+                                                <SelectItem value="120">2 Minutes</SelectItem>
+                                                <SelectItem value="300">5 Minutes</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="mt-12 flex justify-center">
                                 <Button
-                                    onClick={handleStartQuiz}
-                                    disabled={!setupData.documentId}
-                                    className="rounded-3xl h-16 px-12 gradient-bg shadow-2xl shadow-indigo-500/30 border-none font-bold text-lg hover:scale-105 transition-all group"
+                                    onClick={handleGenerateAndStart}
+                                    disabled={!setupData.documentId || isLoadingDocs}
+                                    className="rounded-3xl h-16 px-12 gradient-bg shadow-2xl shadow-indigo-500/30 border-none font-bold text-lg hover:scale-105 transition-all group disabled:opacity-50 disabled:hover:scale-100"
                                 >
                                     <PlayCircle className="mr-2 h-6 w-6" />
-                                    Generate & Start Quiz
+                                    Generate AI Quiz
                                 </Button>
                             </div>
                         </Card>
                     </motion.div>
                 )}
 
+                {/* Step 1.5: Generating State */}
+                {state === "generating" && (
+                    <motion.div
+                        key="generating"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col items-center justify-center min-h-[50vh] space-y-6 text-center"
+                    >
+                        <div className="relative">
+                            <div className="h-24 w-24 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                            <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-indigo-500 animate-pulse" />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold gradient-text">Generating Your Quiz...</h2>
+                            <p className="text-muted-foreground text-sm max-w-md">Our AI is reading your document and synthesizing custom questions. This might take a moment.</p>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Step 2: Active Quiz */}
-                {state === "active" && (
+                {state === "active" && questions.length > 0 && (
                     <motion.div
                         key="active"
                         initial={{ opacity: 0, y: 20 }}
@@ -265,12 +327,12 @@ export default function QuizPage() {
                                 <div className="h-8 w-[1px] bg-white/10" />
                                 <div className="flex items-center gap-2">
                                     <HelpCircle className="h-5 w-5 text-indigo-500" />
-                                    <span className="font-bold text-lg">{currentQuestionIndex + 1} / {mockQuestions.length}</span>
+                                    <span className="font-bold text-lg">{currentQuestionIndex + 1} / {questions.length}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <Progress value={((currentQuestionIndex + 1) / mockQuestions.length) * 100} className="h-2 rounded-full mb-10 bg-indigo-500/10" />
+                        <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="h-2 rounded-full mb-10 bg-indigo-500/10" />
 
                         <div className="flex-1">
                             <Card className="border-none bg-card/40 backdrop-blur-xl shadow-xl rounded-[40px] p-8 md:p-12">
@@ -285,31 +347,31 @@ export default function QuizPage() {
                                             <Badge className="bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 border-none rounded-lg px-3 py-1">
                                                 Question {currentQuestionIndex + 1}
                                             </Badge>
-                                            <h3 className="text-2xl font-bold leading-tight">{mockQuestions[currentQuestionIndex].question}</h3>
+                                            <h3 className="text-2xl font-bold leading-tight">{questions[currentQuestionIndex].question}</h3>
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-4">
-                                            {mockQuestions[currentQuestionIndex].options.map((option) => (
+                                            {questions[currentQuestionIndex].options.map((option) => (
                                                 <button
                                                     key={option}
-                                                    onClick={() => handleSelectAnswer(mockQuestions[currentQuestionIndex].id, option)}
+                                                    onClick={() => handleSelectAnswer(questions[currentQuestionIndex].id, option)}
                                                     className={cn(
                                                         "flex items-center p-6 rounded-3xl border-2 transition-all text-left group relative overflow-hidden",
-                                                        userAnswers[mockQuestions[currentQuestionIndex].id] === option
+                                                        userAnswers[questions[currentQuestionIndex].id] === option
                                                             ? "border-indigo-500 bg-indigo-500/5 shadow-inner"
                                                             : "border-white/5 bg-background/20 hover:border-white/10 hover:bg-white/5"
                                                     )}
                                                 >
                                                     <div className={cn(
-                                                        "h-7 w-7 rounded-full border-2 flex items-center justify-center mr-4 transition-all",
-                                                        userAnswers[mockQuestions[currentQuestionIndex].id] === option
+                                                        "h-7 w-7 rounded-full border-2 flex items-center justify-center mr-4 transition-all shrink-0",
+                                                        userAnswers[questions[currentQuestionIndex].id] === option
                                                             ? "bg-indigo-500 border-indigo-500 text-white"
                                                             : "border-muted-foreground/30 group-hover:border-muted-foreground/50"
                                                     )}>
-                                                        {userAnswers[mockQuestions[currentQuestionIndex].id] === option && <CheckCircle2 className="h-4 w-4" />}
+                                                        {userAnswers[questions[currentQuestionIndex].id] === option && <CheckCircle2 className="h-4 w-4" />}
                                                     </div>
-                                                    <span className="font-medium text-lg">{option}</span>
-                                                    {userAnswers[mockQuestions[currentQuestionIndex].id] === option && (
+                                                    <span className="font-medium text-lg leading-snug">{option}</span>
+                                                    {userAnswers[questions[currentQuestionIndex].id] === option && (
                                                         <motion.div layoutId="selection" className="absolute right-6 h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.5)]" />
                                                     )}
                                                 </button>
@@ -330,7 +392,7 @@ export default function QuizPage() {
                                 <ChevronLeft className="mr-2 h-5 w-5" /> Previous
                             </Button>
                             <div className="flex items-center gap-4">
-                                {currentQuestionIndex === mockQuestions.length - 1 ? (
+                                {currentQuestionIndex === questions.length - 1 ? (
                                     <Button
                                         onClick={handleSubmitQuiz}
                                         className="rounded-2xl h-12 px-8 gradient-bg shadow-xl shadow-indigo-500/25 border-none font-bold"
@@ -339,7 +401,7 @@ export default function QuizPage() {
                                     </Button>
                                 ) : (
                                     <Button
-                                        onClick={() => setCurrentQuestionIndex(prev => Math.min(mockQuestions.length - 1, prev + 1))}
+                                        onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
                                         className="rounded-2xl h-12 px-8 bg-indigo-500 hover:bg-indigo-600 border-none font-bold text-white"
                                     >
                                         Next Question <ChevronRight className="ml-2 h-5 w-5" />
@@ -372,7 +434,7 @@ export default function QuizPage() {
 
                                 <div className="flex flex-col md:flex-row items-center justify-center gap-12 py-6">
                                     <div className="flex flex-col items-center">
-                                        <span className="text-5xl font-black gradient-text">{Math.round((score / mockQuestions.length) * 100)}%</span>
+                                        <span className="text-5xl font-black gradient-text">{questions.length > 0 ? Math.round((score / questions.length) * 100) : 0}%</span>
                                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-2">Overall Score</span>
                                     </div>
                                     <div className="h-12 w-[1px] bg-white/10 hidden md:block" />
@@ -382,18 +444,15 @@ export default function QuizPage() {
                                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Correct</span>
                                         </div>
                                         <div className="flex flex-col items-center">
-                                            <span className="text-3xl font-bold text-red-500">{mockQuestions.length - score}</span>
+                                            <span className="text-3xl font-bold text-red-500">{questions.length - score}</span>
                                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Incorrect</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex gap-4 justify-center pt-6">
-                                    <Button onClick={handleStartQuiz} className="rounded-2xl h-12 px-8 gradient-bg shadow-xl shadow-indigo-500/25 border-none font-bold">
-                                        <RotateCcw className="mr-2 h-4 w-4" /> Try Again
-                                    </Button>
-                                    <Button variant="outline" onClick={() => setState("setup")} className="rounded-2xl h-12 px-8 border-2">
-                                        Back to Setup
+                                    <Button onClick={() => setState("setup")} className="rounded-2xl h-12 px-8 gradient-bg shadow-xl shadow-indigo-500/25 border-none font-bold">
+                                        <RotateCcw className="mr-2 h-4 w-4" /> Start New Quiz
                                     </Button>
                                 </div>
                             </div>
@@ -405,7 +464,8 @@ export default function QuizPage() {
                                 Question Breakdown
                             </h3>
                             <div className="space-y-4">
-                                {mockQuestions.map((q, idx) => {
+                                {questions.map((q, idx) => {
+                                    // Remove any exact prefixing to allow slightly mismatched comparisons, but exact is fine if backend follows structure
                                     const isCorrect = userAnswers[q.id] === q.correctAnswer;
                                     return (
                                         <Card key={q.id} className={cn(
@@ -423,14 +483,14 @@ export default function QuizPage() {
                                             </CardHeader>
                                             <CardContent className="space-y-4 pt-2 pb-6">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="p-3 rounded-xl bg-background/30 border border-white/5">
+                                                    <div className="p-4 rounded-xl bg-background/30 border border-white/5">
                                                         <span className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Your Answer</span>
                                                         <span className={cn("text-sm font-semibold", isCorrect ? "text-emerald-500" : "text-red-500")}>
-                                                            {userAnswers[q.id] || "No Answer"}
+                                                            {userAnswers[q.id] || "No Answer Selected"}
                                                         </span>
                                                     </div>
                                                     {!isCorrect && (
-                                                        <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                                                        <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                                                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block mb-1">Correct Answer</span>
                                                             <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{q.correctAnswer}</span>
                                                         </div>
