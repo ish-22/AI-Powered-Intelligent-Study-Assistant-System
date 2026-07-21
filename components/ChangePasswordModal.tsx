@@ -24,7 +24,7 @@ export default function ChangePasswordModal({ open, onCancel }: { open: boolean,
             open={open}
             onCancel={onCancel}
             footer={null}
-            destroyOnClose
+            destroyOnHidden
         >
             <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
                 <Form.Item
