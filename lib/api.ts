@@ -43,6 +43,9 @@ export interface AuthUser {
     full_name: string;
     email: string;
     profile_picture: string | null;
+    about_me: string | null;
+    primary_course: string | null;
+    language: string | null;
     created_at: string;
     last_login_date: string | null;
 }
@@ -144,7 +147,7 @@ export const api = {
 
         update: (
             token: string,
-            body: { full_name?: string; email?: string; profile_picture?: string }
+            body: { full_name?: string; email?: string; profile_picture?: string; about_me?: string; primary_course?: string; language?: string }
         ) =>
             request<{ message: string; user: AuthUser }>(
                 '/profile',

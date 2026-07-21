@@ -16,6 +16,8 @@ import {
     GraduationCap,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { api } from "@/lib/api";
 
 const sidebarItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -30,6 +32,20 @@ const sidebarItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const { session } = useCurrentUser();
+    const [progress, setProgress] = React.useState(0);
+
+    React.useEffect(() => {
+        if (session?.accessToken) {
+            api.dashboard.getStats(session.accessToken).then(res => {
+                const goals = res.overview?.study_goals || [];
+                if (goals.length > 0) {
+                    const avgProgress = Math.round(goals.reduce((acc: number, g: any) => acc + g.progress, 0) / goals.length);
+                    setProgress(avgProgress);
+                }
+            }).catch(console.error);
+        }
+    }, [session?.accessToken]);
 
     return (
         <aside className="fixed left-0 top-0 z-40 h-screen w-72 border-r bg-card/50 backdrop-blur-xl hidden lg:block">
@@ -83,11 +99,11 @@ export function Sidebar() {
                     <div className="rounded-2xl bg-gradient-to-br from-indigo-600/10 to-purple-600/10 p-5 border border-indigo-500/10 relative overflow-hidden group">
                         <div className="absolute -right-4 -top-4 h-24 w-24 bg-gradient-to-br from-indigo-500 to-purple-500 opacity-10 blur-2xl group-hover:opacity-20 transition-opacity" />
                         <p className="text-sm font-semibold text-foreground mb-1">Weekly Goal</p>
-                        <p className="text-xs text-muted-foreground mb-4">You've completed 75% of your study tasks.</p>
+                        <p className="text-xs text-muted-foreground mb-4">You've completed {progress}% of your study tasks.</p>
                         <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
-                                animate={{ width: "75%" }}
+                                animate={{ width: `${progress}%` }}
                                 className="h-full gradient-bg"
                             />
                         </div>
