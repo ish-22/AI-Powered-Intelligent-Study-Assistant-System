@@ -18,10 +18,18 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useCurrentUser } from "@/lib/use-current-user";
+import { api } from "@/lib/api";
 
 export function Navbar() {
     const pathname = usePathname();
-    const { displayName, displayEmail, avatarUrl, initials } = useCurrentUser();
+    const { session, displayName, displayEmail, avatarUrl, initials } = useCurrentUser();
+
+    const handleSignOut = async () => {
+        if (session?.accessToken) {
+            await api.auth.logout(session.accessToken).catch(() => { });
+        }
+        await signOut({ callbackUrl: "/login" });
+    };
 
     return (
         <header className="sticky top-0 z-30 flex h-16 w-full items-center border-b bg-background/60 backdrop-blur-xl px-4 md:px-8">
@@ -88,7 +96,7 @@ export function Navbar() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                                 className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                                onClick={() => signOut({ callbackUrl: "/" })}
+                                onClick={handleSignOut}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
                                 <span>Log out</span>

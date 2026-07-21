@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 
@@ -48,7 +49,9 @@ interface QuizQuestion {
 const STORAGE = process.env.NEXT_PUBLIC_STORAGE_URL || "http://127.0.0.1:8000/storage";
 
 export default function DocumentsPage() {
-    const { data: session } = useSession();
+    const { session, profile, status } = useCurrentUser();
+    const token = session?.accessToken;
+
     const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [docs, setDocs] = useState<Doc[]>([]);
@@ -60,8 +63,6 @@ export default function DocumentsPage() {
     const [showSubjectInput, setShowSubjectInput] = useState(false);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const token = (session as any)?.accessToken;
     const [viewDoc, setViewDoc] = useState<Doc | null>(null);
     const [summaryDoc, setSummaryDoc] = useState<Doc | null>(null);
     const [quizDoc, setQuizDoc] = useState<Doc | null>(null);
@@ -73,9 +74,14 @@ export default function DocumentsPage() {
     const [quizCount, setQuizCount] = useState(10);
 
     useEffect(() => {
-        if (!token) return;
+        if (status === "loading") return;
+        if (!token) {
+            setLoading(false);
+            setError("You must be logged in to view documents.");
+            return;
+        }
         fetchDocs();
-    }, [token]);
+    }, [token, status]);
 
     async function fetchDocs() {
         setLoading(true);
@@ -101,7 +107,14 @@ export default function DocumentsPage() {
     }
 
     async function handleUpload() {
-        if (!pendingFile || !token) return;
+        if (!pendingFile) {
+            alert("No file selected.");
+            return;
+        }
+        if (!token) {
+            alert("Authentication token missing.");
+            return;
+        }
         setShowSubjectInput(false);
         setUploading(true);
         setUploadProgress(0);
@@ -133,8 +146,10 @@ export default function DocumentsPage() {
 
             const data = await res.json();
             setDocs((prev) => [data.document, ...prev]);
+            alert("File uploaded successfully.");
         } catch (err: any) {
             setError(err.message || "Upload failed.");
+            alert("Upload Error: " + err.message);
         } finally {
             clearInterval(interval);
             setTimeout(() => {

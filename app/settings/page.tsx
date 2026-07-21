@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Bell,
     Shield,
@@ -34,10 +34,14 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
+import { useCurrentUser } from "@/lib/use-current-user";
+import { api } from "@/lib/api";
+import { useTheme } from "next-themes";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 const settingSections = [
     { id: "notifications", label: "Notifications", icon: Bell, color: "text-blue-500" },
-    { id: "security", label: "Security", icon: Shield, color: "text-red-500" },
+    { id: "security", label: "Security & Account", icon: Shield, color: "text-red-500" },
     { id: "appearance", label: "Appearance", icon: Palette, color: "text-purple-500" },
     { id: "language", label: "Language & Region", icon: Globe, color: "text-emerald-500" },
     { id: "privacy", label: "Privacy", icon: Eye, color: "text-indigo-500" },
@@ -45,6 +49,73 @@ const settingSections = [
 
 export default function SettingsPage() {
     const [activeSection, setActiveSection] = useState("notifications");
+    const { session, profile } = useCurrentUser();
+    const { theme, setTheme } = useTheme();
+
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+
+    const [language, setLanguage] = useState("en");
+    const [email, setEmail] = useState("");
+    const [preferences, setPreferences] = useState({
+        email_notifications: true,
+        push_notifications: true,
+        daily_reminders: false,
+        weekly_reports: true,
+        collective_intelligence: true,
+        personalized_ai: true
+    });
+
+    useEffect(() => {
+        if (profile) {
+            setLanguage(profile.language || "en");
+            setEmail(profile.email || "");
+            if (profile.preferences) {
+                setPreferences((prev) => ({
+                    ...prev,
+                    ...profile.preferences
+                }));
+            }
+        }
+    }, [profile]);
+
+    const handlePrefChange = (key: string, value: boolean) => {
+        setPreferences(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleSave = async () => {
+        if (!session?.accessToken) return;
+        setIsSaving(true);
+        try {
+            const payload: any = { language, preferences };
+            if (email && email !== profile?.email) {
+                payload.email = email;
+            }
+            await api.profile.update(session.accessToken, payload);
+
+            // Set Google Translate cookie
+            if (language === 'en') {
+                document.cookie = "googtrans=/en/en; path=/";
+            } else {
+                document.cookie = `googtrans=/en/${language}; path=/`;
+            }
+
+            alert("Settings saved successfully!");
+            window.location.reload();
+        } catch (error) {
+            alert("Failed to save settings. Email might be in use.");
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSignOut = async () => {
+        if (session?.accessToken) {
+            await api.auth.logout(session.accessToken).catch(() => { });
+        }
+        await signOut({ callbackUrl: "/login" });
+    };
 
     return (
         <div className="max-w-6xl mx-auto pb-12 animate-fade-in flex flex-col md:flex-row gap-10">
@@ -78,7 +149,7 @@ export default function SettingsPage() {
                 <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 rounded-2xl text-red-500 hover:bg-red-500/10 hover:text-red-600 font-bold text-sm h-11"
-                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    onClick={handleSignOut}
                 >
                     <LogOut className="h-4 w-4" /> Sign Out
                 </Button>
@@ -96,8 +167,12 @@ export default function SettingsPage() {
                             <h2 className="text-2xl font-bold capitalize">{activeSection}</h2>
                             <p className="text-sm text-muted-foreground">Adjust how your {activeSection} works in Study.AI</p>
                         </div>
-                        <Button className="rounded-2xl h-10 px-6 gradient-bg border-none font-bold shadow-lg shadow-indigo-500/10">
-                            <Save className="mr-2 h-4 w-4" /> Save Changes
+                        <Button
+                            className="rounded-2xl h-10 px-6 gradient-bg border-none font-bold shadow-lg shadow-indigo-500/10 text-white"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                        >
+                            <Save className="mr-2 h-4 w-4" /> {isSaving ? "Saving..." : "Save Changes"}
                         </Button>
                     </div>
 
@@ -110,7 +185,7 @@ export default function SettingsPage() {
                                             <h4 className="text-sm font-bold flex items-center gap-2">Email Notifications <Mail className="h-3.5 w-3.5" /></h4>
                                             <p className="text-xs text-muted-foreground">Get summaries and reports delivered to your inbox.</p>
                                         </div>
-                                        <Switch defaultChecked />
+                                        <Switch checked={preferences.email_notifications} onCheckedChange={(v) => handlePrefChange('email_notifications', v)} />
                                     </div>
                                     <Separator className="bg-white/5" />
                                     <div className="flex items-center justify-between">
@@ -118,7 +193,7 @@ export default function SettingsPage() {
                                             <h4 className="text-sm font-bold flex items-center gap-2">Push Notifications <Smartphone className="h-3.5 w-3.5" /></h4>
                                             <p className="text-xs text-muted-foreground">Stay updated on your learning streak and AI analysis.</p>
                                         </div>
-                                        <Switch defaultChecked />
+                                        <Switch checked={preferences.push_notifications} onCheckedChange={(v) => handlePrefChange('push_notifications', v)} />
                                     </div>
                                 </div>
                             </Card>
@@ -127,11 +202,11 @@ export default function SettingsPage() {
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium">Daily Goal Reminders</span>
-                                        <Switch />
+                                        <Switch checked={preferences.daily_reminders} onCheckedChange={(v) => handlePrefChange('daily_reminders', v)} />
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium">Weekly Progress Reports</span>
-                                        <Switch defaultChecked />
+                                        <Switch checked={preferences.weekly_reports} onCheckedChange={(v) => handlePrefChange('weekly_reports', v)} />
                                     </div>
                                 </div>
                             </Card>
@@ -143,16 +218,20 @@ export default function SettingsPage() {
                             <Card className="border-none bg-card/40 backdrop-blur-xl shadow-sm rounded-3xl p-8">
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center">
-                                                <Key className="h-5 w-5" />
+                                        <div className="flex items-center gap-4 w-full">
+                                            <div className="h-10 w-10 shrink-0 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                                <Mail className="h-5 w-5" />
                                             </div>
-                                            <div>
-                                                <h4 className="text-sm font-bold">Two-Factor Authentication</h4>
-                                                <p className="text-xs text-muted-foreground">Add an extra layer of security to your account.</p>
+                                            <div className="flex-1">
+                                                <h4 className="text-sm font-bold">Email Address</h4>
+                                                <input
+                                                    className="w-full bg-muted/50 border border-white/5 rounded-xl p-3 text-sm mt-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    value={email}
+                                                    onChange={e => setEmail(e.target.value)}
+                                                    placeholder="Your Email"
+                                                />
                                             </div>
                                         </div>
-                                        <Button variant="outline" className="rounded-xl h-9 text-xs font-bold px-4">Enable</Button>
                                     </div>
                                     <Separator className="bg-white/5" />
                                     <div className="flex items-center justify-between">
@@ -162,10 +241,10 @@ export default function SettingsPage() {
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-bold">Password Management</h4>
-                                                <p className="text-xs text-muted-foreground">Last changed 3 months ago.</p>
+                                                <p className="text-xs text-muted-foreground">Keep your account secure.</p>
                                             </div>
                                         </div>
-                                        <Button variant="outline" className="rounded-xl h-9 text-xs font-bold px-4">Update</Button>
+                                        <Button variant="outline" className="rounded-xl h-9 text-xs font-bold px-4" onClick={() => setIsPassModalOpen(true)}>Update</Button>
                                     </div>
                                 </div>
                             </Card>
@@ -175,12 +254,18 @@ export default function SettingsPage() {
                     {activeSection === "appearance" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Card className="border-none bg-card/40 backdrop-blur-xl shadow-sm rounded-3xl p-8 cursor-pointer hover:border-primary/20 transition-all border-2 border-transparent">
+                                <Card
+                                    className={cn("border-none backdrop-blur-xl shadow-sm rounded-3xl p-8 cursor-pointer hover:border-primary/20 transition-all border-2", theme === "light" ? "bg-amber-500/10 border-amber-500" : "bg-card/40 border-transparent")}
+                                    onClick={() => setTheme("light")}
+                                >
                                     <Sun className="h-8 w-8 text-amber-500 mb-4" />
                                     <h4 className="font-bold">Light Theme</h4>
                                     <p className="text-xs text-muted-foreground mt-1">Clean and high-contrast</p>
                                 </Card>
-                                <Card className="border-none bg-indigo-600/10 backdrop-blur-xl border-2 border-indigo-500/50 shadow-sm rounded-3xl p-8 cursor-pointer">
+                                <Card
+                                    className={cn("border-none backdrop-blur-xl shadow-sm rounded-3xl p-8 cursor-pointer hover:border-primary/20 transition-all border-2", theme === "dark" ? "bg-indigo-600/10 border-indigo-500" : "bg-card/40 border-transparent")}
+                                    onClick={() => setTheme("dark")}
+                                >
                                     <Moon className="h-8 w-8 text-indigo-400 mb-4" />
                                     <h4 className="font-bold">Dark Theme</h4>
                                     <p className="text-xs text-muted-foreground mt-1">Easier on the eyes at night</p>
@@ -194,7 +279,7 @@ export default function SettingsPage() {
                             <Card className="border-none bg-card/40 backdrop-blur-xl shadow-sm rounded-3xl p-8">
                                 <div className="space-y-4">
                                     <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Preferred Language</Label>
-                                    <Select defaultValue="en">
+                                    <Select value={language} onValueChange={setLanguage}>
                                         <SelectTrigger className="h-12 rounded-2xl bg-background/50 border-white/5">
                                             <SelectValue placeholder="Select Language" />
                                         </SelectTrigger>
@@ -222,11 +307,11 @@ export default function SettingsPage() {
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium">Contribute to Collective Intelligence</span>
-                                        <Switch defaultChecked />
+                                        <Switch checked={preferences.collective_intelligence} onCheckedChange={(v) => handlePrefChange('collective_intelligence', v)} />
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium">Personalized AI Suggestions</span>
-                                        <Switch defaultChecked />
+                                        <Switch checked={preferences.personalized_ai} onCheckedChange={(v) => handlePrefChange('personalized_ai', v)} />
                                     </div>
                                 </div>
                             </Card>
@@ -246,6 +331,8 @@ export default function SettingsPage() {
                     )}
                 </motion.div>
             </main>
+
+            <ChangePasswordModal open={isPassModalOpen} onCancel={() => setIsPassModalOpen(false)} />
         </div>
     );
 }
