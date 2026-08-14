@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, FileText, BarChart3, Settings, Shield } from "lucide-react";
+import { LayoutDashboard, Users, FileText, BarChart3, Settings, Shield, GraduationCap } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
 import type { AdminNavItem } from "@/components/AdminSidebar";
+import { useCurrentUser } from "@/lib/use-current-user";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -12,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const isLoginPage = pathname === "/admin/login";
     const [checked, setChecked] = useState(false);
     const [authed, setAuthed] = useState(false);
+    const { session, profile } = useCurrentUser();
 
     useEffect(() => {
         if (isLoginPage) {
@@ -19,13 +21,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             return;
         }
         const ok = localStorage.getItem("adminAuth") === "true";
-        if (!ok) {
-            router.replace("/admin/login");
-        } else {
+        if (ok) {
             setAuthed(true);
             setChecked(true);
+        } else if (profile && (profile.role === "admin" || (profile as any).role === "admin")) {
+            // Auto authenticate admin from active student session
+            localStorage.setItem("adminAuth", "true");
+            if (session?.accessToken) {
+                localStorage.setItem("adminToken", session.accessToken);
+            }
+            localStorage.setItem("adminUser", JSON.stringify(profile));
+            setAuthed(true);
+            setChecked(true);
+        } else {
+            router.replace("/admin/login");
         }
-    }, [isLoginPage, router]);
+    }, [isLoginPage, router, profile, session]);
 
     const nav = useMemo<AdminNavItem[]>(
         () => [
@@ -35,6 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: <BarChart3 size={16} /> },
             { id: "roles", label: "Roles & Permissions", href: "/admin/roles", icon: <Shield size={16} /> },
             { id: "settings", label: "Settings", href: "/admin/settings", icon: <Settings size={16} /> },
+            { id: "student_view", label: "Student Panel", href: "/dashboard", icon: <GraduationCap size={16} /> },
         ],
         [],
     );

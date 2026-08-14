@@ -14,6 +14,7 @@ import {
     User,
     Settings,
     GraduationCap,
+    Shield,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -32,8 +33,19 @@ const sidebarItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
-    const { session } = useCurrentUser();
+    const { session, profile } = useCurrentUser();
     const [progress, setProgress] = React.useState(0);
+
+    const activeItems = React.useMemo(() => {
+        const items = [...sidebarItems];
+        if (profile?.role === "admin") {
+            items.push({ name: "Admin Panel", href: "/admin", icon: Shield });
+        }
+        if (profile?.role === "teacher" || (profile as any)?.role === "teacher") {
+            items.push({ name: "Teacher Panel", href: "/teacher", icon: GraduationCap });
+        }
+        return items;
+    }, [profile?.role]);
 
     React.useEffect(() => {
         if (session?.accessToken) {
@@ -62,7 +74,7 @@ export function Sidebar() {
 
                 {/* Navigation */}
                 <nav className="flex-1 space-y-1.5 overflow-y-auto pr-2 scrollbar-hide">
-                    {sidebarItems.map((item) => {
+                    {activeItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
                             <Link

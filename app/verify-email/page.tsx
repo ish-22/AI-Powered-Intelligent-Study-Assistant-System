@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BrainCircuit, MailCheck, Loader2, ArrowLeft, RefreshCw, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function VerifyEmailPage() {
+function VerifyEmailPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const email = searchParams.get("email") || "your email";
@@ -176,5 +176,17 @@ export default function VerifyEmailPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function VerifyEmailPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] text-white">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        }>
+            <VerifyEmailPageContent />
+        </Suspense>
     );
 }
