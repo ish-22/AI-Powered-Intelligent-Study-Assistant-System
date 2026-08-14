@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
     Send, Plus, MessageSquare, Trash2, Copy, RotateCcw,
@@ -24,24 +24,24 @@ const suggestedQuestions = [
 ];
 
 interface ChatItem { id: string; title: string; updated_at: string; }
-interface Message  { id: string; role: "user" | "assistant"; content: string; created_at?: string; }
+interface Message { id: string; role: "user" | "assistant"; content: string; created_at?: string; }
 
-export default function ChatPage() {
+function ChatPageContent() {
     const { data: session } = useSession();
     const token = (session as any)?.accessToken;
     const searchParams = useSearchParams();
 
-    const [chats, setChats]               = useState<ChatItem[]>([]);
+    const [chats, setChats] = useState<ChatItem[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
-    const [messages, setMessages]         = useState<Message[]>([]);
-    const [input, setInput]               = useState("");
-    const [sending, setSending]           = useState(false);
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [input, setInput] = useState("");
+    const [sending, setSending] = useState(false);
     const [loadingChats, setLoadingChats] = useState(true);
-    const [loadingMsgs, setLoadingMsgs]   = useState(false);
-    const [error, setError]               = useState("");
-    const [copied, setCopied]             = useState<string | null>(null);
-    const [searchQuery, setSearchQuery]   = useState("");
-    const [docContext, setDocContext]      = useState<{ id: string; name: string } | null>(null);
+    const [loadingMsgs, setLoadingMsgs] = useState(false);
+    const [error, setError] = useState("");
+    const [copied, setCopied] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [docContext, setDocContext] = useState<{ id: string; name: string } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const docChatStarted = useRef(false);
 
@@ -73,13 +73,13 @@ export default function ChatPage() {
 
     // Auto-start a document chat when arriving from recommendations page
     useEffect(() => {
-        const docId   = searchParams.get("document_id");
+        const docId = searchParams.get("document_id");
         const docName = searchParams.get("document_name");
         if (!docId || !token || docChatStarted.current) return;
         docChatStarted.current = true;
         setDocContext({ id: docId, name: decodeURIComponent(docName ?? "Document") });
         startDocumentChat(docId, decodeURIComponent(docName ?? "Document"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, searchParams]);
 
     const startDocumentChat = async (docId: string, docName: string) => {
@@ -480,5 +480,17 @@ export default function ChatPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-[calc(100vh-120px)] items-center justify-center text-white">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        }>
+            <ChatPageContent />
+        </Suspense>
     );
 }

@@ -42,6 +42,7 @@ export interface AuthUser {
     id: string;
     full_name: string;
     email: string;
+    role?: string;
     profile_picture: string | null;
     about_me: string | null;
     primary_course: string | null;

@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/use-current-user";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
@@ -49,6 +50,7 @@ interface QuizQuestion {
 const STORAGE = process.env.NEXT_PUBLIC_STORAGE_URL || "http://127.0.0.1:8000/storage";
 
 export default function DocumentsPage() {
+    const router = useRouter();
     const { session, profile, status } = useCurrentUser();
     const token = session?.accessToken;
 
@@ -692,7 +694,9 @@ export default function DocumentsPage() {
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="cursor-pointer text-indigo-600" onClick={() => handleGenerateSummary(doc)}><Sparkles className="mr-2 h-4 w-4" /> Generate Summary</DropdownMenuItem>
                                                 <DropdownMenuItem className="cursor-pointer text-purple-600" onClick={() => handleGenerateQuiz(doc)}><Lightbulb className="mr-2 h-4 w-4" /> Generate Quiz</DropdownMenuItem>
-                                                <DropdownMenuItem className="cursor-pointer text-emerald-600"><MessageSquare className="mr-2 h-4 w-4" /> Open AI Chat</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer text-emerald-600" onClick={() => router.push(`/chat?document_id=${doc.id}&document_name=${encodeURIComponent(doc.name)}`)}>
+                                                    <MessageSquare className="mr-2 h-4 w-4" /> Open AI Chat
+                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="cursor-pointer text-red-600" onClick={() => handleDelete(doc.id)}>
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -769,6 +773,9 @@ export default function DocumentsPage() {
                                                 <DropdownMenuItem className="cursor-pointer" onClick={() => setViewDoc(doc)}><Eye className="mr-2 h-4 w-4" /> View</DropdownMenuItem>
                                                 <DropdownMenuItem className="cursor-pointer text-indigo-600" onClick={() => handleGenerateSummary(doc)}><Sparkles className="mr-2 h-4 w-4" /> Summary</DropdownMenuItem>
                                                 <DropdownMenuItem className="cursor-pointer text-purple-600" onClick={() => handleGenerateQuiz(doc)}><Lightbulb className="mr-2 h-4 w-4" /> Quiz</DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer text-emerald-600" onClick={() => router.push(`/chat?document_id=${doc.id}&document_name=${encodeURIComponent(doc.name)}`)}>
+                                                    <MessageSquare className="mr-2 h-4 w-4" /> AI Chat
+                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="cursor-pointer text-red-600" onClick={() => handleDelete(doc.id)}>
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
