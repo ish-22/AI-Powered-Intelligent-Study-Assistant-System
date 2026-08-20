@@ -12,8 +12,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isAuthRoute = publicRoutes.includes(pathname);
     const isAdminRoute = pathname.startsWith("/admin");
+    const isTeacherRoute = pathname.startsWith("/teacher");
 
-    if (isAuthRoute || isAdminRoute) {
+    if (isAuthRoute || isAdminRoute || isTeacherRoute) {
         return <>{children}</>;
     }
 

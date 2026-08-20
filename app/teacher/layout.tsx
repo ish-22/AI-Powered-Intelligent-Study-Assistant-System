@@ -16,6 +16,7 @@ import {
     Menu,
     X,
     ChevronRight,
+    Sparkles,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useTheme } from "next-themes";
@@ -30,28 +31,40 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     const [mobileOpen, setMobileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
 
+    const isLoginPage = pathname === "/teacher/login";
+
     useEffect(() => {
-        if (status === "loading") return;
+        if (isLoginPage || status === "loading") return;
 
         if (!session) {
-            router.replace("/login");
+            router.replace("/teacher/login");
             return;
         }
 
         if (profile) {
             const role = profile.role || (profile as any).role;
+            const isApproved = (profile as any).is_approved !== false;
+
             if (role !== "teacher" && role !== "admin") {
                 router.replace("/dashboard");
+                return;
+            }
+
+            if (role === "teacher" && !isApproved) {
+                alert("Your Teacher account registration is pending Admin verification & approval. Please contact your institution administrator.");
+                router.replace("/teacher/login");
             }
         }
-    }, [session, profile, status, router]);
+    }, [session, profile, status, router, isLoginPage]);
+
+    if (isLoginPage) return <>{children}</>;
 
     const navItems = useMemo(() => [
         { id: "dashboard", label: "Dashboard", href: "/teacher", icon: <LayoutDashboard size={16} /> },
+        { id: "ai_assistant", label: "AI Co-Pilot", href: "/teacher/ai-assistant", icon: <Sparkles size={16} /> },
         { id: "materials", label: "Class Materials", href: "/teacher/materials", icon: <Files size={16} /> },
         { id: "quizzes", label: "Quiz Assignments", href: "/teacher/quizzes", icon: <BookOpen size={16} /> },
         { id: "analytics", label: "Student Analytics", href: "/teacher/analytics", icon: <BarChart3 size={16} /> },
-        { id: "student_view", label: "Student Panel", href: "/dashboard", icon: <GraduationCap size={16} /> },
     ], []);
 
     if (status === "loading" || (!profile && session)) {

@@ -70,6 +70,7 @@ export default function RegisterPage() {
                     email: data.email,
                     password: data.password,
                     confirmPassword: data.confirmPassword,
+                    role: data.role,
                     terms: data.terms,
                 }),
             });
@@ -155,6 +156,18 @@ export default function RegisterPage() {
                                 />
                             </div>
                             {errors.fullName && <p className="text-xs text-red-400">{errors.fullName.message}</p>}
+                        </div>
+
+                        {/* Role selection */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Account Role</label>
+                            <select
+                                {...register("role")}
+                                className="w-full px-4 py-3 rounded-xl bg-[#090914] border border-white/10 text-white text-sm outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                            >
+                                <option value="student">Student (Instant Access)</option>
+                                <option value="teacher">Teacher / Instructor (Requires Admin Approval)</option>
+                            </select>
                         </div>
 
                         {/* Email */}

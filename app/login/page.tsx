@@ -32,7 +32,19 @@ export default function LoginPage() {
         if (res?.error) {
             setError("Invalid email or password. Please try again.");
         } else {
-            router.push("/dashboard");
+            // Check session/user role to route correctly
+            try {
+                const sessionRes = await fetch("/api/auth/session");
+                const sessionData = await sessionRes.json();
+                const userRole = sessionData?.user?.role;
+                if (userRole === "teacher") {
+                    router.push("/teacher");
+                } else {
+                    router.push("/dashboard");
+                }
+            } catch {
+                router.push("/dashboard");
+            }
         }
     };
 
@@ -168,7 +180,15 @@ export default function LoginPage() {
                     </Link>
                 </p>
 
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex justify-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => router.push("/teacher/login")}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-400 transition-all hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
+                    >
+                        <BrainCircuit className="w-3.5 h-3.5" />
+                        Teacher Portal
+                    </button>
                     <button
                         type="button"
                         onClick={() => router.push("/admin/login")}

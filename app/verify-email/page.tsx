@@ -60,20 +60,59 @@ function VerifyEmailPageContent() {
         }
         setLoading(true);
         setError("");
-        await new Promise((r) => setTimeout(r, 1200));
-        setLoading(false);
-        setVerified(true);
-        setTimeout(() => router.push("/login"), 2500);
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+            const res = await fetch(`${API_URL}/auth/verify-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({ email, otp: fullCode }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || data.errors?.otp?.[0] || "Invalid or expired verification OTP code.");
+            }
+
+            setVerified(true);
+            setTimeout(() => router.push("/login"), 2500);
+        } catch (err: any) {
+            setError(err.message || "Failed to verify OTP code.");
+        } finally {
+            setLoading(false);
+        }
     };
+
+    const [successMessage, setSuccessMessage] = useState("");
+    const [latestOtp, setLatestOtp] = useState<string | null>(null);
 
     const handleResend = async () => {
         setResending(true);
-        await new Promise((r) => setTimeout(r, 1000));
-        setResending(false);
-        setCountdown(60);
-        setCanResend(false);
-        setCode(["", "", "", "", "", ""]);
-        inputRefs.current[0]?.focus();
+        setError("");
+        setSuccessMessage("");
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+            const res = await fetch(`${API_URL}/auth/send-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                body: JSON.stringify({ email }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to resend code.");
+            }
+            if (data.debug_otp) {
+                setLatestOtp(data.debug_otp);
+            }
+            setSuccessMessage("A fresh verification code has been generated & sent!");
+            setCountdown(60);
+            setCanResend(false);
+            setCode(["", "", "", "", "", ""]);
+            inputRefs.current[0]?.focus();
+        } catch (err: any) {
+            setError(err.message || "Failed to resend email verification code.");
+        } finally {
+            setResending(false);
+        }
     };
 
     return (
@@ -107,14 +146,25 @@ function VerifyEmailPageContent() {
                                 </div>
                                 <h1 className="text-xl font-bold text-white">Verify your email</h1>
                                 <p className="text-sm text-zinc-400 mt-2 leading-relaxed">
-                                    We sent a 6-digit code to{" "}
+                                    We sent a 6-digit verification code to{" "}
                                     <span className="text-white font-medium">{email}</span>
                                 </p>
+                                {latestOtp && (
+                                    <div className="mt-3 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[12px] text-indigo-300 font-mono">
+                                        🔑 Received OTP Code: <span className="font-bold text-white">{latestOtp}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {error && (
                                 <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
                                     {error}
+                                </div>
+                            )}
+
+                            {successMessage && (
+                                <div className="mb-5 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm text-center">
+                                    {successMessage}
                                 </div>
                             )}
 

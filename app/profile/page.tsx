@@ -25,6 +25,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { api } from "@/lib/api";
+import { AssignedTeacherCard } from "@/components/AssignedTeacherCard";
 
 export default function ProfilePage() {
     const { session, profile, displayName, displayEmail, avatarUrl, initials } = useCurrentUser();
@@ -41,24 +42,34 @@ export default function ProfilePage() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [stats, setStats] = React.useState<any>(null);
 
+    const [freshProfile, setFreshProfile] = React.useState<any>(null);
+
     React.useEffect(() => {
         if (session?.accessToken) {
             api.dashboard.getStats(session.accessToken)
                 .then(res => setStats(res.stats))
                 .catch(console.error);
+
+            api.profile.get(session.accessToken)
+                .then(res => {
+                    if (res?.user) setFreshProfile(res.user);
+                })
+                .catch(console.error);
         }
     }, [session?.accessToken]);
 
+    const activeProfile = freshProfile || profile;
+
     React.useEffect(() => {
-        if (profile) {
+        if (activeProfile) {
             setFormData({
-                fullName: profile.full_name || "",
-                aboutMe: profile.about_me || "",
-                primaryCourse: profile.primary_course || "",
-                language: profile.language || ""
+                fullName: activeProfile.full_name || "",
+                aboutMe: activeProfile.about_me || "",
+                primaryCourse: activeProfile.primary_course || "",
+                language: activeProfile.language || ""
             });
         }
-    }, [profile]);
+    }, [activeProfile]);
 
     const handleSave = async () => {
         if (!session?.accessToken) return;
@@ -234,6 +245,11 @@ export default function ProfilePage() {
 
                     {/* Right: Quick Links / Insights */}
                     <div className="lg:col-span-4 space-y-8">
+                        {/* Assigned Teacher Card */}
+                        {(activeProfile?.role === "student" || profile?.role === "student") && (
+                            <AssignedTeacherCard teacher={activeProfile?.assigned_teacher || profile?.assigned_teacher || null} />
+                        )}
+
                         <Card className="border-none bg-indigo-600/5 backdrop-blur-xl border border-indigo-500/10 shadow-sm rounded-3xl p-6">
                             <CardHeader className="p-0 mb-6">
                                 <CardTitle className="text-lg font-bold">Learning Persona</CardTitle>

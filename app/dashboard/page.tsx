@@ -44,12 +44,13 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { AssignedTeacherCard } from "@/components/AssignedTeacherCard";
 import { useCurrentUser } from "@/lib/use-current-user";
 import { useDashboardStats } from "@/lib/use-dashboard-stats";
 import { useDashboardOverview } from "@/lib/use-dashboard-overview";
 
 export default function DashboardPage() {
-    const { displayName } = useCurrentUser();
+    const { displayName, profile } = useCurrentUser();
     const { stats, loading } = useDashboardStats();
     const { overview, loading: overviewLoading } = useDashboardOverview();
     const [isMounted, setIsMounted] = React.useState(false);
@@ -86,41 +87,48 @@ export default function DashboardPage() {
                 </div>
             </section>
 
+            {/* Assigned Teacher Card */}
+            {profile?.role === "student" && (
+                <section>
+                    <AssignedTeacherCard teacher={profile.assigned_teacher || null} />
+                </section>
+            )}
+
             {/* Stats Cards Grid - Now using real backend data */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
-                <DashboardCard 
-                    title="Docs Uploaded" 
-                    value={loading ? "..." : stats.documents_uploaded.toString()} 
-                    icon={Files} 
-                    gradient 
+                <DashboardCard
+                    title="Docs Uploaded"
+                    value={loading ? "..." : stats.documents_uploaded.toString()}
+                    icon={Files}
+                    gradient
                 />
-                <DashboardCard 
-                    title="Summaries" 
-                    value={loading ? "..." : stats.summaries_generated.toString()} 
-                    icon={FileText} 
+                <DashboardCard
+                    title="Summaries"
+                    value={loading ? "..." : stats.summaries_generated.toString()}
+                    icon={FileText}
                 />
-                <DashboardCard 
-                    title="Quizzes" 
-                    value={loading ? "..." : stats.quizzes_completed.toString()} 
-                    icon={CheckCircle2} 
+                <DashboardCard
+                    title="Quizzes"
+                    value={loading ? "..." : stats.quizzes_completed.toString()}
+                    icon={CheckCircle2}
                 />
-                <DashboardCard 
-                    title="Avg Score" 
-                    value={loading ? "..." : `${stats.avg_quiz_score}%`} 
-                    icon={Trophy} 
-                    trend={{ value: "4%", isUp: true }} 
+                <DashboardCard
+                    title="Avg Score"
+                    value={loading ? "..." : `${stats.avg_quiz_score}%`}
+                    icon={Trophy}
+                    trend={{ value: "4%", isUp: true }}
                 />
-                <DashboardCard 
-                    title="Study Hours" 
-                    value={loading ? "..." : `${stats.study_time_hours}h`} 
-                    icon={Clock} 
-                    trend={{ value: "12%", isUp: true }} 
+                <DashboardCard
+                    title="Study Hours"
+                    value={loading ? "..." : `${stats.study_time_hours}h`}
+                    icon={Clock}
+                    trend={{ value: "12%", isUp: true }}
                 />
-                <DashboardCard 
-                    title="Streak" 
-                    value={loading ? "..." : `${stats.learning_streak} Days`} 
-                    icon={Zap} 
-                    gradient 
+                <DashboardCard
+                    title="Streak"
+                    value={loading ? "..." : `${stats.learning_streak} Days`}
+                    icon={Zap}
+                    gradient
                 />
             </section>
 
