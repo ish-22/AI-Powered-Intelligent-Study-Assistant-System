@@ -41,12 +41,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const nav = useMemo<AdminNavItem[]>(
         () => [
             { id: "dashboard", label: "Dashboard", href: "/admin", icon: <LayoutDashboard size={16} /> },
-            { id: "users", label: "Users", href: "/admin/users", icon: <Users size={16} /> },
+            { id: "users", label: "Users & Teachers", href: "/admin/users", icon: <Users size={16} /> },
             { id: "documents", label: "Documents", href: "/admin/documents", icon: <FileText size={16} /> },
             { id: "analytics", label: "Analytics", href: "/admin/analytics", icon: <BarChart3 size={16} /> },
             { id: "roles", label: "Roles & Permissions", href: "/admin/roles", icon: <Shield size={16} /> },
             { id: "settings", label: "Settings", href: "/admin/settings", icon: <Settings size={16} /> },
-            { id: "student_view", label: "Student Panel", href: "/dashboard", icon: <GraduationCap size={16} /> },
         ],
         [],
     );

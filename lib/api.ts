@@ -50,6 +50,15 @@ export interface AuthUser {
     preferences: Record<string, any>;
     created_at: string;
     last_login_date: string | null;
+    assigned_teacher_id?: string | null;
+    assigned_teacher?: {
+        id: string;
+        full_name: string;
+        email: string;
+        primary_course?: string;
+        about_me?: string;
+        profile_picture?: string;
+    } | null;
 }
 
 export interface AuthResponse {
@@ -133,6 +142,8 @@ export const api = {
             email: string;
             password: string;
             password_confirmation: string;
+            role?: string;
+            is_approved?: boolean;
         }) => request<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
 
         login: (body: { email: string; password: string }) =>
@@ -201,5 +212,36 @@ export const api = {
                 { method: 'POST', body: JSON.stringify({ count, difficulty, topic }) },
                 token
             ),
+    },
+
+    teacher: {
+        getStats: (token: string) =>
+            request<{
+                stats: {
+                    active_students: number;
+                    shared_materials: number;
+                    classroom_quizzes: number;
+                    quiz_attempts: number;
+                    average_mastery: number;
+                };
+            }>('/teacher/stats', {}, token),
+
+        getRoster: (token: string, category?: string) =>
+            request<{
+                students: Array<{
+                    id: string;
+                    name: string;
+                    email: string;
+                    category: string;
+                    quizzesCompleted: number;
+                    avgScore: number;
+                    weakestTopic: string;
+                    lastActive: string;
+                }>;
+                categories: string[];
+            }>(`/teacher/roster${category ? `?category=${encodeURIComponent(category)}` : ''}`, {}, token),
+
+        sendNudge: (token: string, studentId: string) =>
+            request<{ message: string }>(`/teacher/nudge/${studentId}`, { method: 'POST' }, token),
     },
 };

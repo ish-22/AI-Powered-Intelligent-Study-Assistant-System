@@ -20,13 +20,15 @@ export async function POST(req: Request) {
             );
         }
 
-        const { fullName, email, password, confirmPassword } = result.data;
+        const { fullName, email, password, confirmPassword, role } = result.data;
 
         const response = await api.auth.register({
             full_name: fullName,
             email,
             password,
             password_confirmation: confirmPassword,
+            role: role || "student",
+            is_approved: role === "teacher" ? false : true,
         });
 
         return NextResponse.json(response, { status: 201 });
