@@ -11,31 +11,44 @@ async function request<T>(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    const res = await fetch(`${API_URL}${path}`, {
-        ...options,
-        headers,
-        credentials: 'include',
-    });
-
-    const text = await res.text();
-    let data: any = null;
+    // Add a 30s timeout signal if no signal provided
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const signal = options.signal || controller.signal;
 
     try {
-        data = text ? JSON.parse(text) : null;
-    } catch {
-        data = { message: text || 'Request failed' };
-    }
+        const res = await fetch(`${API_URL}${path}`, {
+            ...options,
+            headers: {
+                ...headers,
+                ...(options.headers as Record<string, string> || {}),
+            },
+            credentials: 'include',
+            signal,
+        });
 
-    if (!res.ok) {
-        const errors = (data?.errors ?? {}) as Record<string, string[]>;
-        const message =
-            data?.message ||
-            Object.values(errors)[0]?.[0] ||
-            'Request failed';
-        throw new Error(message as string);
-    }
+        const text = await res.text();
+        let data: any = null;
 
-    return data as T;
+        try {
+            data = text ? JSON.parse(text) : null;
+        } catch {
+            data = { message: text || 'Request failed' };
+        }
+
+        if (!res.ok) {
+            const errors = (data?.errors ?? {}) as Record<string, string[]>;
+            const message =
+                data?.message ||
+                Object.values(errors)[0]?.[0] ||
+                'Request failed';
+            throw new Error(message as string);
+        }
+
+        return data as T;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 export interface AuthUser {
