@@ -14,6 +14,13 @@ import {
     Loader2,
     Filter,
     GraduationCap,
+    Bell,
+    CheckCircle,
+    Zap,
+    Megaphone,
+    Activity,
+    Brain,
+    Radio
 } from "lucide-react";
 import Link from "next/link";
 import { useCurrentUser } from "@/lib/use-current-user";
@@ -37,6 +44,12 @@ export default function TeacherDashboard() {
     const [categories, setCategories] = useState<string[]>(["All"]);
     const [toast, setToast] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [announcementText, setAnnouncementText] = useState("");
+    const [announcements, setAnnouncements] = useState<Array<{ id: number; text: string; date: string }>>([
+        { id: 1, text: "Final Assessment Review slides uploaded to shared repository.", date: "Today, 10:15 AM" },
+        { id: 2, text: "Practice Quiz 4 on Linear Vectors is now active.", date: "Yesterday, 2:30 PM" },
+    ]);
+
     const [stats, setStats] = useState({
         active_students: 0,
         shared_materials: 0,
@@ -94,10 +107,38 @@ export default function TeacherDashboard() {
         setTimeout(() => setToast(null), 3000);
     };
 
+    const triggerBulkRemedial = () => {
+        const atRisk = students.filter((s) => s.avgScore < 70);
+        if (atRisk.length === 0) {
+            setToast("All active students are performing above target threshold!");
+        } else {
+            setToast(`Bulk AI Remedial Directives dispatched to ${atRisk.length} at-risk students.`);
+        }
+        setTimeout(() => setToast(null), 3500);
+    };
+
+    const handlePostAnnouncement = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!announcementText.trim()) return;
+        setAnnouncements([
+            { id: Date.now(), text: announcementText, date: "Just now" },
+            ...announcements,
+        ]);
+        setAnnouncementText("");
+        setToast("Classroom Announcement posted successfully!");
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    // Calculate score distribution
+    const aCount = students.filter((s) => s.avgScore >= 80).length;
+    const bCount = students.filter((s) => s.avgScore >= 65 && s.avgScore < 80).length;
+    const needsSupportCount = students.filter((s) => s.avgScore < 65).length;
+    const totalCount = students.length || 1;
+
     return (
         <div className="space-y-8 relative">
             {toast && (
-                <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl bg-indigo-500 text-white text-xs font-semibold shadow-2xl flex items-center gap-2 border border-indigo-400 animate-in fade-in slide-in-from-top-3">
+                <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-semibold shadow-2xl flex items-center gap-2 border border-indigo-400 animate-in fade-in slide-in-from-top-3">
                     <Sparkles className="w-4 h-4 animate-pulse" />
                     {toast}
                 </div>
@@ -107,13 +148,19 @@ export default function TeacherDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                        Classroom Overview
+                        Classroom Intelligence Dashboard
                     </h1>
                     <p className="text-zinc-400 text-sm mt-1">
-                        Track live student roster categorized by Subject & Course level.
+                        Monitor live student performance, issue AI remedial directives, and post announcements.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={triggerBulkRemedial}
+                        className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-medium text-xs flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                        <Zap className="w-3.5 h-3.5 text-amber-400" /> AI Bulk Remedial Action
+                    </button>
                     <Link
                         href="/teacher/ai-assistant"
                         className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 hover:scale-[1.02] active:scale-[0.98] text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all cursor-pointer"
@@ -157,7 +204,99 @@ export default function TeacherDashboard() {
                 ))}
             </div>
 
-            {/* Main content grid */}
+            {/* Live Engagement & Score Breakdown Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Score Distribution Breakdown */}
+                <div className="lg:col-span-8 p-6 rounded-3xl bg-[#0d0d1e] border border-white/5 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-indigo-400" />
+                                Mastery Grade Bracket Distribution
+                            </h3>
+                            <p className="text-zinc-500 text-xs mt-0.5">Real-time breakdown of current student performance levels</p>
+                        </div>
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            {students.length} Total Students
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 pt-2">
+                        <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15 space-y-1">
+                            <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
+                                <span>Mastery (80%+)</span>
+                                <span>{Math.round((aCount / totalCount) * 100)}%</span>
+                            </div>
+                            <div className="text-2xl font-black text-white">{aCount}</div>
+                            <div className="h-1.5 w-full bg-emerald-500/20 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500" style={{ width: `${(aCount / totalCount) * 100}%` }} />
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/15 space-y-1">
+                            <div className="flex items-center justify-between text-xs text-amber-400 font-bold">
+                                <span>Proficient (65-79%)</span>
+                                <span>{Math.round((bCount / totalCount) * 100)}%</span>
+                            </div>
+                            <div className="text-2xl font-black text-white">{bCount}</div>
+                            <div className="h-1.5 w-full bg-amber-500/20 rounded-full overflow-hidden">
+                                <div className="h-full bg-amber-500" style={{ width: `${(bCount / totalCount) * 100}%` }} />
+                            </div>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/15 space-y-1">
+                            <div className="flex items-center justify-between text-xs text-red-400 font-bold">
+                                <span>Needs Support (&lt;65%)</span>
+                                <span>{Math.round((needsSupportCount / totalCount) * 100)}%</span>
+                            </div>
+                            <div className="text-2xl font-black text-white">{needsSupportCount}</div>
+                            <div className="h-1.5 w-full bg-red-500/20 rounded-full overflow-hidden">
+                                <div className="h-full bg-red-500" style={{ width: `${(needsSupportCount / totalCount) * 100}%` }} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Classroom Announcements Board */}
+                <div className="lg:col-span-4 p-6 rounded-3xl bg-[#0d0d1e] border border-white/5 shadow-xl flex flex-col justify-between space-y-4">
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                <Megaphone className="w-4 h-4 text-purple-400" />
+                                Class Noticeboard
+                            </h3>
+                            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                        </div>
+
+                        <form onSubmit={handlePostAnnouncement} className="space-y-2 mb-4">
+                            <input
+                                type="text"
+                                placeholder="Post update for your students..."
+                                value={announcementText}
+                                onChange={(e) => setAnnouncementText(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl text-xs bg-white/5 border border-white/10 text-white outline-none focus:border-indigo-500 placeholder:text-zinc-600"
+                            />
+                            <button
+                                type="submit"
+                                className="w-full py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all"
+                            >
+                                Post Announcement
+                            </button>
+                        </form>
+
+                        <div className="space-y-2 max-h-36 overflow-y-auto">
+                            {announcements.map((item) => (
+                                <div key={item.id} className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-xs space-y-1">
+                                    <p className="text-zinc-300 font-medium">{item.text}</p>
+                                    <span className="text-[10px] text-zinc-500 block">{item.date}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main content grid: Student Matrix */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Students matrix */}
                 <div className="lg:col-span-2 p-6 rounded-3xl bg-[#0d0d1e] border border-white/5 shadow-xl space-y-6">
@@ -226,8 +365,9 @@ export default function TeacherDashboard() {
                                     {filteredStudents.map((s) => (
                                         <tr key={s.id} className="border-b border-white/5 hover:bg-white/5 transition-all group">
                                             <td className="py-4 flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold relative">
                                                     {s.name[0]?.toUpperCase() ?? "S"}
+                                                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-[#0d0d1e]" />
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-white group-hover:text-indigo-400 transition-colors">{s.name}</p>
