@@ -91,18 +91,22 @@ function ChatPageContent() {
                 body: JSON.stringify({ document_id: docId }),
             });
             const data = await res.json();
+            if (!res.ok || !data.chat?.id) {
+                throw new Error(data?.message || "Failed to start document chat session.");
+            }
             const chat = { title: `Chat about: ${docName}`, ...data.chat };
             setChats(prev => [chat, ...prev]);
             setActiveChatId(chat.id);
             // Send an opening message so the AI introduces the document
             await doSend(chat.id, `Hi! I'd like to discuss the document "${docName}". Can you give me a brief overview of what it covers?`);
-        } catch {
-            setError("Failed to start document chat.");
+        } catch (err: any) {
+            setError(err?.message || "Failed to start document chat.");
         }
     };
 
     // Load messages for active chat
     const openChat = async (id: string) => {
+        if (!id) return;
         setActiveChatId(id);
         setMessages([]);
         setLoadingMsgs(true);
@@ -112,10 +116,13 @@ function ChatPageContent() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.message || "Failed to load messages.");
+            }
             setMessages(data.messages ?? []);
             scrollToBottom();
-        } catch {
-            setError("Failed to load messages.");
+        } catch (err: any) {
+            setError(err?.message || "Failed to load messages.");
         } finally {
             setLoadingMsgs(false);
         }
@@ -131,11 +138,14 @@ function ChatPageContent() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
+            if (!res.ok || !data.chat?.id) {
+                throw new Error(data?.message || "Failed to create new chat.");
+            }
             const chat = { title: 'New Chat', ...data.chat };
             setChats((prev) => [chat, ...prev]);
             await openChat(chat.id);
-        } catch {
-            setError("Failed to create chat.");
+        } catch (err: any) {
+            setError(err?.message || "Failed to create chat.");
         }
     };
 
@@ -166,15 +176,19 @@ function ChatPageContent() {
             try {
                 const res = await fetch(`${API}/chats`, {
                     method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify(docContext ? { document_id: docContext.id } : {}),
                 });
                 const data = await res.json();
-                const chat = { title: 'New Chat', ...data.chat };
+                if (!res.ok || !data.chat?.id) {
+                    throw new Error(data?.message || "Failed to start chat.");
+                }
+                const chat = { title: docContext ? `Chat about: ${docContext.name}` : 'New Chat', ...data.chat };
                 setChats((prev) => [chat, ...prev]);
                 setActiveChatId(chat.id);
                 await doSend(chat.id, content);
-            } catch {
-                setError("Failed to start chat.");
+            } catch (err: any) {
+                setError(err?.message || "Failed to start chat.");
             }
             return;
         }

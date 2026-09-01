@@ -184,8 +184,8 @@ export default function QuizPage() {
                         className="space-y-8"
                     >
                         <div className="text-center space-y-2">
-                            <h1 className="text-4xl font-extrabold tracking-tight">AI Quiz <span className="gradient-text">Generator</span></h1>
-                            <p className="text-muted-foreground">Customize your assessment and challenge your knowledge using your uploaded documents.</p>
+                            <h1 className="text-4xl font-extrabold tracking-tight">AI Exam <span className="gradient-text">Generator</span></h1>
+                            <p className="text-muted-foreground">Generate rigorous, university-standard exam quizzes with analytical questions and plausible options.</p>
                         </div>
 
                         {error && (
@@ -216,20 +216,26 @@ export default function QuizPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Difficulty Level</Label>
+                                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Exam Rigor & Difficulty Level</Label>
                                         <div className="grid grid-cols-3 gap-3">
-                                            {['Easy', 'Medium', 'Hard'].map((diff) => (
+                                            {[
+                                                { id: 'easy', label: 'Foundational', sub: 'Core Concepts' },
+                                                { id: 'medium', label: 'Standard Exam', sub: 'University Rigor' },
+                                                { id: 'hard', label: 'Honors Exam', sub: 'Complex Analysis' },
+                                            ].map((diff) => (
                                                 <button
-                                                    key={diff}
-                                                    onClick={() => setSetupData({ ...setupData, difficulty: diff.toLowerCase() })}
+                                                    key={diff.id}
+                                                    type="button"
+                                                    onClick={() => setSetupData({ ...setupData, difficulty: diff.id })}
                                                     className={cn(
-                                                        "py-3 rounded-2xl border transition-all text-sm font-semibold",
-                                                        setupData.difficulty === diff.toLowerCase()
+                                                        "py-3 px-2 rounded-2xl border transition-all text-center flex flex-col items-center justify-center",
+                                                        setupData.difficulty === diff.id
                                                             ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
                                                             : "border-white/5 bg-background/20 hover:bg-white/5 text-muted-foreground"
                                                     )}
                                                 >
-                                                    {diff}
+                                                    <span className="text-xs font-bold">{diff.label}</span>
+                                                    <span className="text-[9px] opacity-75 mt-0.5">{diff.sub}</span>
                                                 </button>
                                             ))}
                                         </div>

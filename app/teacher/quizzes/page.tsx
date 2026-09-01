@@ -379,15 +379,15 @@ export default function EducatorQuizzes() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] uppercase font-bold text-zinc-400">Difficulty</label>
+                                <label className="text-[10px] uppercase font-bold text-zinc-400">Exam Rigor Level</label>
                                 <select
                                     value={difficulty}
                                     onChange={(e) => setDifficulty(e.target.value)}
                                     className="w-full px-3 py-2 text-xs rounded-xl bg-[#090914] border border-white/10 text-white outline-none"
                                 >
-                                    <option value="easy">Easy</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="hard">Hard</option>
+                                    <option value="easy">Foundational Exam</option>
+                                    <option value="medium">Standard University Exam</option>
+                                    <option value="hard">Honors / Advanced Board Exam</option>
                                 </select>
                             </div>
                             <div className="space-y-1.5">
@@ -451,10 +451,10 @@ export default function EducatorQuizzes() {
                                                 <h4 className="text-sm font-bold text-white">{q.title}</h4>
                                                 <span
                                                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${q.status === "PUBLISHED"
-                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                            : q.status === "DRAFT"
-                                                                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                                                                : "bg-zinc-500/10 text-zinc-400"
+                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                        : q.status === "DRAFT"
+                                                            ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                                            : "bg-zinc-500/10 text-zinc-400"
                                                         }`}
                                                 >
                                                     {q.status}
